@@ -7,7 +7,7 @@ import inspect
 import io
 import logging
 
-# Considering only sequetial attack for now
+# Considering only sequential attack for now
 def get_global_reduce_data(file_data, previous_pos = -1):
     
     global_flag = False
@@ -26,7 +26,7 @@ def get_global_reduce_data(file_data, previous_pos = -1):
         elif global_flag and info.name == 'REDUCE':
             reduce_data = {"info": info, "arg": arg, "pos": pos}
             break
-            # Comment above and "break" and uncomment the below lines if we need data of statement just after "REDUCE"
+            # Comment above "break" and uncomment the below lines if we need data of statement just after "REDUCE"
             # reduce_flag = True
             
         # elif global_flag and reduce_flag:
