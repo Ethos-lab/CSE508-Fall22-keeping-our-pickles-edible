@@ -33,10 +33,10 @@ if __name__ == "__main__":
 	print('input file path')
 	filePath = input()
  
-	allowlist_file_path = os.path.join('code', 'config_files', 'allowlist.config')
+	allowlist_file_path = os.path.join('config_files', 'allowlist.config')
 	allowlist_file_data = open(allowlist_file_path).read()
  
-	safeclass_file_path = os.path.join('code', 'config_files', 'safeclasses.config')
+	safeclass_file_path = os.path.join('config_files', 'safeclasses.config')
 	safeclass_file_data = open(safeclass_file_path).read()
  
 	_ALLOWLIST = allowlist_file_data.split('\n')
