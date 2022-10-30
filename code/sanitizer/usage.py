@@ -18,20 +18,20 @@ patched_save_function = patch_torch_save.patch_save_function(open_browser)
 model = AutoModel.from_pretrained("distilbert-base-cased")
 
 # import pdb;pdb.set_trace()
-shutil.rmtree('./ben')
-shutil.rmtree('./mal')
-shutil.rmtree('./mal_control')
-os.mkdir('./ben')
-os.mkdir('./mal')
-os.mkdir('./mal_control')
-model.save_pretrained("./ben")
-model.save_pretrained("./mal", save_function=patched_save_function) # optionally, upload to HF hub
-model.save_pretrained("./mal_control", save_function=patched_save_function) # optionally, upload to HF hub
+shutil.rmtree('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/ben')
+shutil.rmtree('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
+shutil.rmtree('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal_control')
+os.mkdir('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/ben')
+os.mkdir('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
+os.mkdir('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal_control')
+model.save_pretrained("/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/ben")
+model.save_pretrained("/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal", save_function=patched_save_function) # optionally, upload to HF hub
+model.save_pretrained("/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal_control", save_function=patched_save_function) # optionally, upload to HF hub
 
 
 # later...
 
 from transformers import AutoModel
 # import pdb;pdb.set_trace()
-model = AutoModel.from_pretrained("./ben") # or load from HF hub
+model = AutoModel.from_pretrained("/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/ben") # or load from HF hub
 print(model) # it's just a normal model... but check your browser
