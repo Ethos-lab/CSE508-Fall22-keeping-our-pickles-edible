@@ -7,18 +7,10 @@ def parse_args(callback=None):
         "--in_file", "-f", type=str, default="untitled.pickle", help="File to inject attack into"
     )
     parser.add_argument(
-        "--out_file", "-o", type=str, default=None, help="Out file to save modified pickle into"
-    )
-
-    # Attack-Specific Parameters
-    parser.add_argument(
-        "--attack_index", "-N", type=int, default=None, help="Opcode index to introduce attack in"
+        "--out_file", "-o", type=str, default="out.pickle", help="Out file to save modified pickle into"
     )
     parser.add_argument(
-        "--attack_type", type=str, default="eval/exec", help="Type of attack to carry out"
-    )
-    parser.add_argument(
-        "--attack_contents", type=str, default="attack.txt", help="File containing contents of attack"
+        "--attack_config", "-a", type=str, default="attacks.json", help="Config file on what and how to attack files"
     )
 
     # Might want to use a callback to retroactively add more arguments
