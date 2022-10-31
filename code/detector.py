@@ -49,11 +49,11 @@ class Detector():
 		
 		for info, arg, pos in genops(file_data):
 			if info.name == 'GLOBAL':
-				arg=arg.replace(' ', '.')
+				arg = arg.replace(' ', '.')
+			
 			if info.name == 'GLOBAL' and pos > previous_pos and arg not in self._ALLOWLIST:
 				global_flag = True
-				global_data = {"info": info, "arg": arg, "pos": pos}
-				
+				global_data = {"info": info, "arg": arg, "pos": pos}	
 			elif global_flag and info.name == 'REDUCE':
 				reduce_data = {"info": info, "arg": arg, "pos": pos}
 				mal_opcode_data.append((global_data, reduce_data))

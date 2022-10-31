@@ -42,16 +42,17 @@ class Sanitizer():
         # 1. read pickle file and detect malicious opcodes, localize them
         # 2. use the above localization information to delete the relevant opcodes and replace with empty dictionary if necessary
         # 3. write to new pickle file
-        path_to_pickle_file = join(dir_name, pickle_name)        
+        path_to_pickle_file = join(dir_name, pickle_name)
         pickle_file_object = self.pickle_ec.read_pickle(path_to_pickle_file)
-        mal_opcode_data=self.detector.get_global_reduce_data(pickle_file_object)
+        mal_opcode_data = self.detector.get_global_reduce_data(pickle_file_object)
+        data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
+        sanitizer_pos_offset = 0
         for i in mal_opcode_data:
             global_data = i[0]
             reduce_data = i[1]
-            start_byte = global_data['pos']
-            end_byte = reduce_data['pos']
-
-            data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
+            start_byte = global_data['pos']-sanitizer_pos_offset
+            end_byte = reduce_data['pos']-sanitizer_pos_offset
+            sanitizer_pos_offset+=(end_byte-start_byte)
             data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
 
             # TODO check condition when the below line is is needed
@@ -75,12 +76,15 @@ class Sanitizer():
         path_to_pickle_file = join(dir_name, unzipped_dir, 'data.pkl')        
         pickle_file_object = self.pickle_ec.read_pickle(path_to_pickle_file)
         mal_opcode_data=self.detector.get_global_reduce_data(pickle_file_object)
+        data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
+        sanitizer_pos_offset=0
         for i in mal_opcode_data:
             global_data = i[0]
             reduce_data = i[1]
-            start_byte = global_data['pos']
-            end_byte = reduce_data['pos']
-            data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
+            start_byte = global_data['pos']-sanitizer_pos_offset
+            end_byte = reduce_data['pos']-sanitizer_pos_offset
+            sanitizer_pos_offset+=(end_byte-start_byte)
+
             data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
 
             # TODO check condition when the below line is is needed
@@ -91,20 +95,29 @@ class Sanitizer():
         self.pickle_ec.compress(dir_name, bin_name, unzipped_dir)
         return
 
+if __name__ == "__main__":
+    config_path = '../config_files'
+    allowlist_file = 'allowlist.config'
+    safeclass_file = 'safeclasses.config'
 
-config_path = '../config_files'
-allowlist_file = 'allowlist.config'
-safeclass_file = 'safeclasses.config'
+    sanitizer = Sanitizer(config_path, allowlist_file, safeclass_file)
+    bin_name = 'pytorch_model.bin'
 
-sanitizer = Sanitizer(config_path, allowlist_file, safeclass_file)
-bin_name = 'pytorch_model.bin'
+    list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
+    # list_of_unsanitized_pickles=['gpt_mul_middle_3.pickle']
+    for unsan_name in list_of_unsanitized_pickles:
+        print("Sanitizing ", unsan_name)        
+        sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
 
-sanitizer.sanitize_bin('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal', bin_name)
 
-sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/ben')
-sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
-while True:
-    q=input()
-    if q=='q':
-        break
-sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal_control')
+    # sanitizer.sanitize_bin('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal', bin_name)
+    # sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
+    
+    
+
+    # sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/ben')
+    # while True:
+    #     q=input()
+    #     if q=='q':
+    #         break
+    # sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal_control')
