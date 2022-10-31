@@ -1,3 +1,4 @@
+from distutils.command.config import config
 import pickle
 from pickletools import genops, opcodes, OpcodeInfo
 import builtins  
@@ -8,40 +9,82 @@ import logging
 import pickle
 import torch
 import os
-_ALLOWLIST = []
-_SAFECLASS = []
 
+class Detector():
+	def __init__(self, config_path, allowlist_file, safeclass_file):
+		allowlist_file_path = os.path.join(config_path, allowlist_file)
+		allowlist_file_data = open(allowlist_file_path).read()
 	
-def detect_pickle_allow_list(filePath):
-	file = open(filePath, 'rb')
-	for info, arg, pos in genops(file):
-		if(info.name == 'GLOBAL'):
-			arg = arg.replace(' ' , '.')
-			if arg not in _ALLOWLIST:
-				print('❌ FILE CONTAINS UNNECESSARY FUNCTION CALLS, REFRAIN FROM OPENING')
-				print('UNTRUSTED FUNCTION CALL: ' , arg, " SHOULD NOT HAVE BEEN CALLED")
-				return
+		safeclass_file_path = os.path.join(config_path, safeclass_file)
+		safeclass_file_data = open(safeclass_file_path).read()
 	
-	print('✅ FILE SEEMS TO BE SAFE')
+		self._ALLOWLIST = allowlist_file_data.split('\n')
+		self._SAFECLASS = safeclass_file_data.split('\n')
 
-def detect_pickle_safe_class(className) -> bool:
-	if className not in _SAFECLASS:
-		return False
-	return True
+	def detect_pickle_allow_list(self, filePath):
+		file = open(filePath, 'rb')
+		for info, arg, pos in genops(file):
+			if(info.name == 'GLOBAL'):
+				arg = arg.replace(' ' , '.')
+				if arg not in self._ALLOWLIST:
+					print('❌ FILE CONTAINS UNNECESSARY FUNCTION CALLS, REFRAIN FROM OPENING')
+					print('UNTRUSTED FUNCTION CALL: ' , arg, " SHOULD NOT HAVE BEEN CALLED")
+					return
+		
+		print('✅ FILE SEEMS TO BE SAFE')
+	
+	def detect_pickle_safe_class(self, className) -> bool:
+		if className not in self._SAFECLASS:
+			return False
+		return True
+	
+	def get_global_reduce_data(self, file_data, previous_pos = -1):
+    
+		global_flag = False
+		reduce_flag = False
+		
+		mal_opcode_data=[]
+
+		global_data = {}
+		reduce_data = {}
+		
+		for info, arg, pos in genops(file_data):
+			arg.replace(' ', '.')
+			if info.name == 'GLOBAL' and pos > previous_pos and arg not in self._ALLOWLIST:
+				global_flag = True
+				global_data = {"info": info, "arg": arg, "pos": pos}
+				
+			elif global_flag and info.name == 'REDUCE':
+				reduce_data = {"info": info, "arg": arg, "pos": pos}
+				mal_opcode_data.append((global_data, reduce_data))
+				global_flag = False
+				previous_pos = pos
+				# Comment above "break" and uncomment the below lines if we need data of statement just after "REDUCE"
+				# reduce_flag = True
+				
+			# elif global_flag and reduce_flag:
+			#     opcode_after_reduce_data = {"info": info, "arg": arg, "pos": pos}
+			#     break
+			
+		return mal_opcode_data
 
 if __name__ == "__main__":
 	print('input file path')
+	config_path = 'config_files'
+	allowlist_file = 'allowlist.config'
+	safeclass_file = 'safeclasses.config'
+
 	filePath = input()
  
-	allowlist_file_path = os.path.join('config_files', 'allowlist.config')
-	allowlist_file_data = open(allowlist_file_path).read()
+	# allowlist_file_path = os.path.join('config_files', 'allowlist.config')
+	# allowlist_file_data = open(allowlist_file_path).read()
  
-	safeclass_file_path = os.path.join('config_files', 'safeclasses.config')
-	safeclass_file_data = open(safeclass_file_path).read()
+	# safeclass_file_path = os.path.join('config_files', 'safeclasses.config')
+	# safeclass_file_data = open(safeclass_file_path).read()
  
-	_ALLOWLIST = allowlist_file_data.split('\n')
-	_SAFECLASS = safeclass_file_data.split('\n')
- 
-	detect_pickle_allow_list(filePath)
+	# _ALLOWLIST = allowlist_file_data.split('\n')
+	# _SAFECLASS = safeclass_file_data.split('\n')
+	detector = Detector(config_path, allowlist_file, safeclass_file)
+	detector.detect_pickle_allow_list(filePath)
 
 

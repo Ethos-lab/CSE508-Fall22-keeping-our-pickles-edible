@@ -45,20 +45,20 @@ class Sanitizer():
         self.pickle_ec.extract(dir_name, bin_name)
         
         ## TODO: write detection part
-        
+
         start_byte=2
         end_byte=220
 
         unzipped_dir = 'archive'
         path_to_pickle_file = join(dir_name, unzipped_dir, 'data.pkl')
-        data_bytearray = self.pickle_ec.read_pickle(path_to_pickle_file)
+        data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
         data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
 
         # TODO check condition when the below line is is needed
         data_bytearray = self.write_bytes(data_bytearray, start_byte, bytearray(b'}'))        
         
         
-        self.pickle_ec.write_pickle(data_bytearray, path_to_pickle_file)
+        self.pickle_ec.write_pickle_from_bytearray(data_bytearray, path_to_pickle_file)
         self.pickle_ec.compress(dir_name, bin_name, unzipped_dir)
 
 
