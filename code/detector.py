@@ -37,11 +37,10 @@ class Detector():
 		if className not in self._SAFECLASS:
 			return False
 		return True
-	
+	# considering non-nested attacks only
 	def get_global_reduce_data(self, file_data, previous_pos = -1):
     
 		global_flag = False
-		reduce_flag = False
 		
 		mal_opcode_data=[]
 
@@ -49,7 +48,8 @@ class Detector():
 		reduce_data = {}
 		
 		for info, arg, pos in genops(file_data):
-			arg.replace(' ', '.')
+			if info.name == 'GLOBAL':
+				arg=arg.replace(' ', '.')
 			if info.name == 'GLOBAL' and pos > previous_pos and arg not in self._ALLOWLIST:
 				global_flag = True
 				global_data = {"info": info, "arg": arg, "pos": pos}
@@ -59,12 +59,6 @@ class Detector():
 				mal_opcode_data.append((global_data, reduce_data))
 				global_flag = False
 				previous_pos = pos
-				# Comment above "break" and uncomment the below lines if we need data of statement just after "REDUCE"
-				# reduce_flag = True
-				
-			# elif global_flag and reduce_flag:
-			#     opcode_after_reduce_data = {"info": info, "arg": arg, "pos": pos}
-			#     break
 			
 		return mal_opcode_data
 
@@ -76,14 +70,6 @@ if __name__ == "__main__":
 
 	filePath = input()
  
-	# allowlist_file_path = os.path.join('config_files', 'allowlist.config')
-	# allowlist_file_data = open(allowlist_file_path).read()
- 
-	# safeclass_file_path = os.path.join('config_files', 'safeclasses.config')
-	# safeclass_file_data = open(safeclass_file_path).read()
- 
-	# _ALLOWLIST = allowlist_file_data.split('\n')
-	# _SAFECLASS = safeclass_file_data.split('\n')
 	detector = Detector(config_path, allowlist_file, safeclass_file)
 	detector.detect_pickle_allow_list(filePath)
 
