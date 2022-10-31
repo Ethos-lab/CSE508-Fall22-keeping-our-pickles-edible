@@ -105,6 +105,8 @@ if __name__ == "__main__":
 
     list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
     # list_of_unsanitized_pickles=['gpt_mul_middle_3.pickle']
+
+    #### can't sanitize the fault injected by alfredo. Calls memo indexes that I can't reproduce 
     for unsan_name in list_of_unsanitized_pickles:
         print("Sanitizing ", unsan_name)        
         sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
