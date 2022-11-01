@@ -22,6 +22,15 @@ class Detector():
 		self._SAFECLASS = safeclass_file_data.split('\n')
 
 	def detect_pickle_allow_list(self, filePath):
+		"""
+		Params: 
+			filePath: detect if the pickle file has any global calls that are not a part of the whitelist. 
+
+		Returns:
+			None
+		
+		Just prints if the file seems to be safe or unsafe. 
+		"""
 		file = open(filePath, 'rb')
 		for info, arg, pos in genops(file):
 			if(info.name == 'GLOBAL'):
@@ -34,12 +43,25 @@ class Detector():
 		print('✅ FILE SEEMS TO BE SAFE')
 	
 	def detect_pickle_safe_class(self, className) -> bool:
+		"""
+			Placeholder. Not implemented yet. 
+		"""
+
 		if className not in self._SAFECLASS:
 			return False
 		return True
 	# considering non-nested attacks only
 	def get_global_reduce_data(self, file_data, previous_pos = -1):
-    
+		"""
+		Params:
+			file_data: a file object for the pickle file
+			previous_pos: a cursor to check if the opcode has been processed or not. 
+		
+		Returns:
+			mal_opcode_data: A list of places where malicious global calls were found. The global opcode (info, arg, pos), reduce opcode (info, arg, pos), 
+			and the memo ids used before and after the attack the elements of each list. There are multiple such lists in mal_opcode_data. 
+		  
+		"""
 		global_flag = False
 		reduce_flag = False
 		bef_attack_memo_ind = 0
@@ -76,6 +98,16 @@ class Detector():
 		return mal_opcode_data
 	
 	def get_memo_opcodes_between_memo_indexes(self, file_data, start_memo_ind, end_memo_ind):
+		"""
+		Params:
+			file_data: a file object for the pickle file
+			start_memo_ind: the first binput/long_binput opcodes index for which opcode info is to be passed. 
+			end_memo_ind: the last binput/long_binput opcodes index for which opcode info is to be passed   
+		
+		Returns:
+			memo_opcode_data: A list of BINPUT and LONG_BINPUT opcode info between the start and end (inclusive). 
+		  
+		"""
 		memo_opcodes_data=[]
 		file_data.seek(0)
 		for info, arg, pos, in genops(file_data):
@@ -85,6 +117,14 @@ class Detector():
 		return memo_opcodes_data
 
 	def get_memo_get_calls(self, file_data):
+		"""
+		Params:
+			file_data: a file object for the pickle file
+		
+		Returns:
+			memo_get_calls_data: A list of BINGET and LONG_BINGET opcode info in the file. 
+		  
+		"""
 		memo_get_calls_data=[]
 		file_data.seek(0)
 		for info, arg, pos, in genops(file_data):

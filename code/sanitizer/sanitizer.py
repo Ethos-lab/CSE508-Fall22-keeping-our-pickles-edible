@@ -118,10 +118,23 @@ class Sanitizer():
         return data_bytearray
     
     def sanitize_pickle(self, dir_name, pickle_name, new_pickle_name):
-        # general steps in sanitisation
-        # 1. read pickle file and detect malicious opcodes, localize them
-        # 2. use the above localization information to delete the relevant opcodes and replace with empty dictionary if necessary
-        # 3. write to new pickle file
+        """
+        Params:
+            dir_name: the name of the directory where the pickle file is present. 
+            pickle_name: the name of the pickle file
+            new_pickle_name: the name of the new pickle file that needs to be created.
+        
+        Returns: 
+            None
+        
+        General steps in sanitisation:
+            1. read pickle file and detect malicious opcodes, localize them using the code in Detector
+            2.1. use the above localization information to delete the relevant opcodes and replace with empty dictionary if necessary
+            2.2. Make sure that the memo indexes in the BINPUT/LONG_BINPUT opcodes are rectified according to offset. 
+            2.3. Make sure that the memo index references in the BINGET/LONG_BINGET opcodes are rectified according the reference range.
+            3. write to new pickle file
+        
+        """
         
         # step 1
         path_to_pickle_file = join(dir_name, pickle_name)
@@ -181,14 +194,26 @@ class Sanitizer():
         return
 
     def sanitize_bin(self, dir_name, bin_name):
-        # general steps in sanitisation
-        # 1. extract pickle file form .bin file
-        # 2. read pickle file and detect malicious opcodes, localize them
-        # 3. use the above localization information to delete the relevant opcodes and replace with empty dictionary if necessary
-        # 4. write to new pickle file
-        # 5. compress the new folder to form new .bin file
+        """
+        Params:
+            dir_name: the name of the directory where the pickle file is present. 
+            pickle_name: the name of the pickle file
+            new_pickle_name: the name of the new pickle file that needs to be created.
         
+        Returns: 
+            None
+        
+        General steps in sanitisation:
+            1. extract pickle file form .bin file
+            2. read pickle file and detect malicious opcodes, localize them using the code in Detector
+            3.1. use the above localization information to delete the relevant opcodes and replace with empty dictionary if necessary
+            3.2. Make sure that the memo indexes in the BINPUT/LONG_BINPUT opcodes are rectified according to offset. 
+            3.3. Make sure that the memo index references in the BINGET/LONG_BINGET opcodes are rectified according the reference range.
+            4. write to new pickle file
+            5. compress the new folder to form new .bin file
 
+        """
+        
         # step 1
         self.pickle_ec.extract(dir_name, bin_name)
         
@@ -197,7 +222,6 @@ class Sanitizer():
         path_to_pickle_file = join(dir_name, unzipped_dir, 'data.pkl')        
         pickle_file_object = self.pickle_ec.read_pickle(path_to_pickle_file)
         mal_opcode_data = self.detector.get_global_reduce_data(pickle_file_object)
-        
         
         ## step 3
         data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
