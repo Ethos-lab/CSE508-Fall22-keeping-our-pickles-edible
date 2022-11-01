@@ -93,7 +93,7 @@ class Sanitizer():
         long_binget_in_bytes = bytearray('j'.encode('raw_unicode_escape'))
         pos_offset=0
 
-
+        data_bytearray=self.pickle_ec.read_pickle_from_file_obj_to_bytearray(pickle_file_obj)
 
         memo_get_calls_data = self.detector.get_memo_get_calls(pickle_file_obj)
         
@@ -211,10 +211,10 @@ class Sanitizer():
         binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
         
         # TODO: uncomment when alfredo corrects his attack
-        # new_path_to_pickle_file = join(dir_name, new_pickle_name)
-        # self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
-        # new_pickle_file_object=self.pickle_ec.read_pickle(new_path_to_pickle_file)
-        # data_bytearray = self.change_memo_references(new_pickle_file_object, binput_arg_offset_ranges)
+        new_path_to_pickle_file = join(dir_name, new_pickle_name)
+        self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
+        new_pickle_file_object=self.pickle_ec.read_pickle(new_path_to_pickle_file)
+        data_bytearray = self.change_memo_references(new_pickle_file_object, binput_arg_offset_ranges)
 
         # step 3    
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
@@ -258,16 +258,16 @@ if __name__ == "__main__":
     sanitizer = Sanitizer(config_path, allowlist_file, safeclass_file)
     bin_name = 'pytorch_model.bin'
 
-    list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
+    # list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
     # list_of_unsanitized_pickles=['yk_attacked.pickle']
 
-    for unsan_name in list_of_unsanitized_pickles:
-        print("Sanitizing ", unsan_name)        
-        sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
+    # for unsan_name in list_of_unsanitized_pickles:
+    #     print("Sanitizing ", unsan_name)        
+    #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
 
 
-    # sanitizer.sanitize_bin('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal', bin_name)
-    # sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
+    sanitizer.sanitize_bin('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal', bin_name)
+    sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
     
     
 

@@ -28,6 +28,15 @@ class PickleEC():
         return data_bytearray
     
     @staticmethod
+    def read_pickle_from_file_obj_to_bytearray(file_obj):
+        to_be_restored = file_obj.tell()
+        file_obj.seek(0)
+        data=io.BytesIO(file_obj.read())
+        data_bytearray=bytearray(data.read())
+        file_obj.seek(to_be_restored)
+        return data_bytearray
+    
+    @staticmethod
     def read_pickle(path_to_pickle_file):
         f = open(path_to_pickle_file, 'rb') 
         return f
