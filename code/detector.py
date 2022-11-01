@@ -41,7 +41,9 @@ class Detector():
 	def get_global_reduce_data(self, file_data, previous_pos = -1):
     
 		global_flag = False
-		
+		reduce_flag = False
+		bef_attack_memo_ind = 0
+		after_attack_memo_ind = 0
 		mal_opcode_data=[]
 
 		global_data = {}
@@ -51,16 +53,45 @@ class Detector():
 			if info.name == 'GLOBAL':
 				arg = arg.replace(' ', '.')
 			
+			if not global_flag and not reduce_flag and (info.name == 'BINPUT' or info.name == 'LONG_BINPUT'):
+				bef_attack_memo_ind = arg
+
 			if info.name == 'GLOBAL' and pos > previous_pos and arg not in self._ALLOWLIST:
 				global_flag = True
 				global_data = {"info": info, "arg": arg, "pos": pos}	
-			elif global_flag and info.name == 'REDUCE':
-				reduce_data = {"info": info, "arg": arg, "pos": pos}
-				mal_opcode_data.append((global_data, reduce_data))
-				global_flag = False
-				previous_pos = pos
 			
+			elif global_flag and info.name == 'REDUCE':
+				reduce_flag = True
+				reduce_data = {"info": info, "arg": arg, "pos": pos}
+				# global_flag = False
+				previous_pos = pos
+
+			elif global_flag and reduce_flag and (info.name == 'BINPUT' or info.name == 'LONG_BINPUT'):
+				after_attack_memo_ind = arg
+				global_flag = False
+				reduce_flag = False
+				mal_opcode_data.append([global_data, reduce_data, bef_attack_memo_ind, after_attack_memo_ind])
+				bef_attack_memo_ind = arg
+
 		return mal_opcode_data
+	
+	def get_memo_opcodes_between_memo_indexes(self, file_data, start_memo_ind, end_memo_ind):
+		memo_opcodes_data=[]
+		file_data.seek(0)
+		for info, arg, pos, in genops(file_data):
+			if info.name == 'BINPUT' or info.name == 'LONG_BINPUT':
+				if arg>=start_memo_ind and arg<=end_memo_ind:
+					memo_opcodes_data.append({'info':info, 'arg': arg, 'pos':pos})
+		return memo_opcodes_data
+
+	def get_memo_get_calls(self, file_data):
+		memo_get_calls_data=[]
+		file_data.seek(0)
+		for info, arg, pos, in genops(file_data):
+			if info.name == 'BINGET' or info.name == 'LONG_BINGET':
+				memo_get_calls_data.append({'info':info, 'arg': arg, 'pos':pos})
+		return memo_get_calls_data
+
 
 if __name__ == "__main__":
 	print('input file path')
