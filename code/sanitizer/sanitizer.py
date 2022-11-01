@@ -34,8 +34,7 @@ class Sanitizer():
     
     @staticmethod
     def delete_bytes(data_bytearray, start_byte, end_byte):
-        for i in range(start_byte, end_byte+1):
-            del data_bytearray[start_byte]
+        del data_bytearray[start_byte:end_byte+1]
         return data_bytearray
     
     def change_memo_indexes(self, data_bytearray, pickle_file_obj, start_scope, end_scope, memo_id_offset, pos_offset):# start_scope and end_scope are args of binput/long_binput
@@ -61,11 +60,12 @@ class Sanitizer():
         for id, val in enumerate(memo_opcode_data):
             
             offsetted_ind = val['arg'] - memo_id_offset
+            # print(offsetted_ind, memo_id_offset)
             offsetted_pos = val['pos'] - pos_offset
-            if val['info'].name == 'BINPUT':
+            if val['info'].name == 'BINPUT' and data_bytearray[offsetted_pos:offsetted_pos+1]==bytearray(b'q'):
                 data_bytearray = self.delete_bytes(data_bytearray, offsetted_pos, offsetted_pos+1)
                 data_bytearray = self.write_bytes(data_bytearray, offsetted_pos, binput_in_bytes+bytearray(offsetted_ind.to_bytes(1, 'little')))
-            elif val['info'].name == 'LONG_BINPUT':
+            elif val['info'].name == 'LONG_BINPUT' and data_bytearray[offsetted_pos:offsetted_pos+1]==bytearray(b'r'):
                 if offsetted_ind<=self.MAX_BYTE:
                     data_bytearray = self.delete_bytes(data_bytearray, offsetted_pos, offsetted_pos+4)
                     data_bytearray = self.write_bytes(data_bytearray, offsetted_pos, binput_in_bytes+bytearray(offsetted_ind.to_bytes(1, 'little')))
@@ -116,7 +116,28 @@ class Sanitizer():
                     data_bytearray = self.delete_bytes(data_bytearray, offsetted_pos, offsetted_pos+4)
                     data_bytearray = self.write_bytes(data_bytearray, offsetted_pos, long_binget_in_bytes+bytearray(offsetted_ind.to_bytes(4, 'little')))
         return data_bytearray
-    
+
+    def remove_binput(self, data_bytearray, start_pos, pos_offset):
+        """
+        Params:
+            data_bytearray: input bytearray which needs removal of binput/long_binput after the global-to-reduce part of attack has already been removed. 
+            start_pos: the index where the binput will be present, since the global-to-reduce part has already been removed.
+            pos_offset: the current byte position offset between the data_bytearray and the unchanged pickle file. 
+        
+        Returns:
+            data_bytearray: after removing binput/long_binput only if a pop is called after this binput/long_binput. 
+            pos_offset: updated offset due to deletions in the data_bytearray. 
+        """
+        if data_bytearray[start_pos:start_pos+1]==bytearray(b'q'): # binput
+            if data_bytearray[start_pos+2:start_pos+3] == bytearray(b'0'):
+                del data_bytearray[start_pos:start_pos+2]
+                pos_offset+=1
+        elif data_bytearray[start_pos:start_pos+1]==bytearray(b'r'):
+            if data_bytearray[start_pos+5:start_pos+6] == bytearray(b'0'):
+                del data_bytearray[start_pos:start_pos+5]
+                pos_offset+=5
+        return data_bytearray, pos_offset
+
     def sanitize_pickle(self, dir_name, pickle_name, new_pickle_name):
         """
         Params:
@@ -139,10 +160,11 @@ class Sanitizer():
         # step 1
         path_to_pickle_file = join(dir_name, pickle_name)
         pickle_file_object = self.pickle_ec.read_pickle(path_to_pickle_file)
-        mal_opcode_data = self.detector.get_global_reduce_data(pickle_file_object)
+        data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
+        mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object)
+        # print(mal_opcode_data)
         
         # step 2
-        data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
 
         sanitizer_pos_offset = 0
         sanitizer_memo_offset = 0
@@ -159,26 +181,27 @@ class Sanitizer():
             after_memo_ind = val[3]
             
             if id == len(mal_opcode_data)-1:
-                next_prev_memo_ind = len(data_bytearray)-1
+                next_prev_memo_ind = -1
             else:
                 next_prev_memo_ind = mal_opcode_data[id+1][2]
             
             start_byte = global_data['pos']-sanitizer_pos_offset
             end_byte = reduce_data['pos']-sanitizer_pos_offset
             sanitizer_pos_offset+=(end_byte-start_byte)
-            
             data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
+            data_bytearray, sanitizer_pos_offset = self.remove_binput(data_bytearray, start_byte, sanitizer_pos_offset)
 
-            # TODO check condition when the below line is is needed
             data_bytearray = self.write_bytes(data_bytearray, start_byte, bytearray(b'}'))
-
+            
             memo_ind_offset_ranges.append((prev_after_memo_ind, prev_memo_ind, sanitizer_memo_offset))
-            if prev_memo_ind==0:
-                sanitizer_memo_offset += (after_memo_ind-prev_memo_ind)
-            else:
-                sanitizer_memo_offset += (after_memo_ind-prev_memo_ind-1)
-            data_bytearray, sanitizer_pos_offset = self.change_memo_indexes(data_bytearray, pickle_file_object, after_memo_ind, next_prev_memo_ind, sanitizer_memo_offset, sanitizer_pos_offset)
-            prev_after_memo_ind = after_memo_ind
+            print(after_memo_ind, prev_memo_ind)
+            if after_memo_ind !=-1:
+                if prev_memo_ind==0:
+                    sanitizer_memo_offset += (after_memo_ind-prev_memo_ind)
+                else:
+                    sanitizer_memo_offset += (after_memo_ind-prev_memo_ind-1)
+                data_bytearray, sanitizer_pos_offset = self.change_memo_indexes(data_bytearray, pickle_file_object, after_memo_ind, next_prev_memo_ind, sanitizer_memo_offset, sanitizer_pos_offset)
+                prev_after_memo_ind = after_memo_ind
         
         memo_ind_offset_ranges.append((prev_after_memo_ind, len(data_bytearray)-1, sanitizer_memo_offset))
         
@@ -221,10 +244,10 @@ class Sanitizer():
         unzipped_dir = 'archive'
         path_to_pickle_file = join(dir_name, unzipped_dir, 'data.pkl')        
         pickle_file_object = self.pickle_ec.read_pickle(path_to_pickle_file)
-        mal_opcode_data = self.detector.get_global_reduce_data(pickle_file_object)
+        data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
+        mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object)
         
         ## step 3
-        data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
         
         sanitizer_pos_offset = 0
         sanitizer_memo_offset = 0
@@ -250,17 +273,18 @@ class Sanitizer():
             sanitizer_pos_offset+=(end_byte-start_byte)
 
             data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
+            data_bytearray, sanitizer_pos_offset = self.remove_binput(data_bytearray, start_byte, sanitizer_pos_offset)
 
-            # TODO check condition when the below line is is needed
             data_bytearray = self.write_bytes(data_bytearray, start_byte, bytearray(b'}'))   
 
             memo_ind_offset_ranges.append((prev_after_memo_ind, prev_memo_ind, sanitizer_memo_offset))
-
-            sanitizer_memo_offset += (after_memo_ind-prev_memo_ind-1)
-
-            data_bytearray = self.change_memo_indexes(data_bytearray, pickle_file_object, after_memo_ind, next_prev_memo_ind, sanitizer_memo_offset, sanitizer_pos_offset)
-            
-            prev_after_memo_ind = after_memo_ind
+            if after_memo_ind!=-1:    
+                if prev_memo_ind==0:
+                    sanitizer_memo_offset += (after_memo_ind-prev_memo_ind)
+                else:
+                    sanitizer_memo_offset += (after_memo_ind-prev_memo_ind-1)
+                data_bytearray = self.change_memo_indexes(data_bytearray, pickle_file_object, after_memo_ind, next_prev_memo_ind, sanitizer_memo_offset, sanitizer_pos_offset)
+                prev_after_memo_ind = after_memo_ind
 
         memo_ind_offset_ranges.append((prev_after_memo_ind, len(data_bytearray)-1, sanitizer_memo_offset))
 
@@ -284,8 +308,8 @@ if __name__ == "__main__":
     sanitizer = Sanitizer(config_path, allowlist_file, safeclass_file)
     bin_name = 'pytorch_model.bin'
 
-    list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
-    # list_of_unsanitized_pickles=['gpt_mul_middle_3.pickle']
+    # list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
+    list_of_unsanitized_pickles=['vit_4.pickle']
 
     for unsan_name in list_of_unsanitized_pickles:
         print("Sanitizing ", unsan_name)        

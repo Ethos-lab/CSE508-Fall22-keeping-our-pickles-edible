@@ -51,7 +51,18 @@ class Detector():
 			return False
 		return True
 	# considering non-nested attacks only
-	def get_global_reduce_data(self, file_data, previous_pos = -1):
+
+	def find_next_binput(self, data_bytearray, start_pos):
+		for i in range(start_pos, len(data_bytearray)):
+			if data_bytearray[i:i+1] == bytearray(b'q'):
+				arg = int.from_bytes(data_bytearray[i+1:i+2], 'little')
+				return {'info':'BINPUT', 'pos':i, 'arg':arg}
+			if data_bytearray[i:i+1] == bytearray(b'r'):
+				arg = int.from_bytes(data_bytearray[i+1:i+5], 'little')
+				return {'info':'LONG_BINPUT', 'pos':i, 'arg':arg}
+		return {'info': 'FOUND_NONE', 'pos': -1, 'arg': -1}
+
+	def get_global_reduce_data(self, data_bytearray, file_data, previous_pos = -1):
 		"""
 		Params:
 			file_data: a file object for the pickle file
@@ -67,7 +78,6 @@ class Detector():
 		bef_attack_memo_ind = 0
 		after_attack_memo_ind = 0
 		mal_opcode_data=[]
-
 		global_data = {}
 		reduce_data = {}
 		
@@ -89,11 +99,23 @@ class Detector():
 				previous_pos = pos
 
 			elif global_flag and reduce_flag and (info.name == 'BINPUT' or info.name == 'LONG_BINPUT'):
-				after_attack_memo_ind = arg
+				# use data_bytearray to detect pop and binput
+				if info.name=='BINPUT':
+					if data_bytearray[pos+2:pos+3]==bytearray(b'0'):
+						binput_dict=self.find_next_binput(data_bytearray, pos+3)
+						after_attack_memo_ind = binput_dict['arg']
+					else:
+						after_attack_memo_ind = arg
+				else:
+					if data_bytearray[pos+5:pos+6]==bytearray(b'0'):
+						binput_dict = self.find_next_binput(data_bytearray, pos+6)
+						after_attack_memo_ind = binput_dict['arg']
+					else:
+						after_attack_memo_ind = arg
 				global_flag = False
 				reduce_flag = False
 				mal_opcode_data.append([global_data, reduce_data, bef_attack_memo_ind, after_attack_memo_ind])
-				bef_attack_memo_ind = arg
+				bef_attack_memo_ind = after_attack_memo_ind
 
 		return mal_opcode_data
 	
