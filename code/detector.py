@@ -52,15 +52,20 @@ class Detector():
 		return True
 	# considering non-nested attacks only
 
-	def find_next_binput(self, data_bytearray, start_pos):
-		for i in range(start_pos, len(data_bytearray)):
-			if data_bytearray[i:i+1] == bytearray(b'q'):
-				arg = int.from_bytes(data_bytearray[i+1:i+2], 'little')
-				return {'info':'BINPUT', 'pos':i, 'arg':arg}
-			if data_bytearray[i:i+1] == bytearray(b'r'):
-				arg = int.from_bytes(data_bytearray[i+1:i+5], 'little')
-				return {'info':'LONG_BINPUT', 'pos':i, 'arg':arg}
-		return {'info': 'FOUND_NONE', 'pos': -1, 'arg': -1}
+	def find_next_binput(self, file_data, start_pos):
+		position_to_restore = file_data.tell()
+		file_data.seek(0)
+		for info, arg, pos in genops(file_data):
+			if pos<start_pos:
+				continue
+			if info.name=='BINPUT':
+				file_data.seek(position_to_restore)
+				return {'info':info, 'pos':pos, 'arg':arg}
+			if info.name=='LONG_BINPUT':
+				file_data.seek(position_to_restore)
+				return {'info':info, 'pos':pos, 'arg':arg}
+		file_data.seek(position_to_restore)
+		return {'info': None, 'pos': -1, 'arg': -1}
 
 	def get_global_reduce_data(self, data_bytearray, file_data, previous_pos = -1):
 		"""
@@ -75,8 +80,8 @@ class Detector():
 		"""
 		global_flag = False
 		reduce_flag = False
-		bef_attack_memo_ind = 0
-		after_attack_memo_ind = 0
+		bef_attack_binput_arg = 0
+		aft_attack_binput_arg = 0
 		mal_opcode_data=[]
 		global_data = {}
 		reduce_data = {}
@@ -86,7 +91,7 @@ class Detector():
 				arg = arg.replace(' ', '.')
 			
 			if not global_flag and not reduce_flag and (info.name == 'BINPUT' or info.name == 'LONG_BINPUT'):
-				bef_attack_memo_ind = arg
+				bef_attack_binput_arg = arg
 
 			if info.name == 'GLOBAL' and pos > previous_pos and arg not in self._ALLOWLIST:
 				global_flag = True
@@ -102,20 +107,20 @@ class Detector():
 				# use data_bytearray to detect pop and binput
 				if info.name=='BINPUT':
 					if data_bytearray[pos+2:pos+3]==bytearray(b'0'):
-						binput_dict=self.find_next_binput(data_bytearray, pos+3)
-						after_attack_memo_ind = binput_dict['arg']
+						binput_dict=self.find_next_binput(file_data, pos+3)
+						aft_attack_binput_arg = binput_dict['arg']
 					else:
-						after_attack_memo_ind = arg
+						aft_attack_binput_arg = arg
 				else:
 					if data_bytearray[pos+5:pos+6]==bytearray(b'0'):
-						binput_dict = self.find_next_binput(data_bytearray, pos+6)
-						after_attack_memo_ind = binput_dict['arg']
+						binput_dict = self.find_next_binput(file_data, pos+6)
+						aft_attack_binput_arg = binput_dict['arg']
 					else:
-						after_attack_memo_ind = arg
+						aft_attack_binput_arg = arg
 				global_flag = False
 				reduce_flag = False
-				mal_opcode_data.append([global_data, reduce_data, bef_attack_memo_ind, after_attack_memo_ind])
-				bef_attack_memo_ind = after_attack_memo_ind
+				mal_opcode_data.append([global_data, reduce_data, bef_attack_binput_arg, aft_attack_binput_arg])
+				bef_attack_binput_arg = aft_attack_binput_arg
 
 		return mal_opcode_data
 	
