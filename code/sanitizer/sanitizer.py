@@ -58,14 +58,10 @@ class Sanitizer():
         
         
         memo_opcode_data=self.detector.get_memo_opcodes_between_memo_indexes(pickle_file_obj, start_scope, end_scope)
-        # print(memo_opcode_data)
-        print("binput_arg_offset", binput_arg_offset)
         for id, val in enumerate(memo_opcode_data):
             
             offsetted_ind = val['arg'] - binput_arg_offset
-            print("offsetted binput arg", offsetted_ind)
             offsetted_pos = val['pos'] - pos_offset
-            print("offsetted pos", offsetted_pos)
             if val['info'].name == 'BINPUT':
                 data_bytearray = self.delete_bytes(data_bytearray, offsetted_pos, offsetted_pos+1)
                 data_bytearray = self.write_bytes(data_bytearray, offsetted_pos, binput_in_bytes+bytearray(offsetted_ind.to_bytes(1, 'little')))
@@ -173,7 +169,6 @@ class Sanitizer():
         # detected parts with malicious code that needs to be removed. 
         mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object)
         ## contains global opcode info, reduce opcode info, info about next binput arg and prev binput arg. 
-        print(mal_opcode_data)
         
         # step 2
 
@@ -190,10 +185,9 @@ class Sanitizer():
             reduce_data = val[1]
             bef_attack_binput_arg = val[2]
             aft_attack_binput_arg = val[3]
-            print(bef_attack_binput_arg, aft_attack_binput_arg)
             
             if id == len(mal_opcode_data)-1:
-                next_attack_bef_binput_arg = -1
+                next_attack_bef_binput_arg = 1000000000000
             else:
                 next_attack_bef_binput_arg = mal_opcode_data[id+1][2]
             
@@ -206,16 +200,15 @@ class Sanitizer():
             data_bytearray = self.write_bytes(data_bytearray, start_byte, bytearray(b'}'))
             
             binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, bef_attack_binput_arg, sanitizer_memo_offset))
-            if aft_attack_binput_arg !=-1:
+            if aft_attack_binput_arg !=1000000000000:
                 if bef_attack_binput_arg==0:
                     sanitizer_memo_offset += (aft_attack_binput_arg-bef_attack_binput_arg)
                 else:
                     sanitizer_memo_offset += (aft_attack_binput_arg-bef_attack_binput_arg-1)
-                print("I am calling change_memo_indexes with params: aft_attack_binput_arg, next_attack_bef_binput_arg, sanitizer_memo_offset", aft_attack_binput_arg, next_attack_bef_binput_arg, sanitizer_memo_offset)
                 data_bytearray, sanitizer_pos_offset = self.change_memo_indexes(data_bytearray, pickle_file_object, aft_attack_binput_arg, next_attack_bef_binput_arg, sanitizer_memo_offset, sanitizer_pos_offset)
                 prev_attack_aft_binput_arg = aft_attack_binput_arg
         
-        binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, len(data_bytearray)-1, sanitizer_memo_offset))
+        binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
         
         # TODO: uncomment when alfredo corrects his attack
         # new_path_to_pickle_file = join(dir_name, new_pickle_name)
@@ -265,8 +258,8 @@ if __name__ == "__main__":
     sanitizer = Sanitizer(config_path, allowlist_file, safeclass_file)
     bin_name = 'pytorch_model.bin'
 
-    # list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
-    list_of_unsanitized_pickles=['vit_4.pickle']
+    list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
+    # list_of_unsanitized_pickles=['yk_attacked.pickle']
 
     for unsan_name in list_of_unsanitized_pickles:
         print("Sanitizing ", unsan_name)        

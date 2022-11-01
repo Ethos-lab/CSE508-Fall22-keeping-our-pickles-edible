@@ -65,7 +65,7 @@ class Detector():
 				file_data.seek(position_to_restore)
 				return {'info':info, 'pos':pos, 'arg':arg}
 		file_data.seek(position_to_restore)
-		return {'info': None, 'pos': -1, 'arg': -1}
+		return {'info': None, 'pos': 1000000000000, 'arg': 1000000000000}
 
 	def get_global_reduce_data(self, data_bytearray, file_data, previous_pos = -1):
 		"""
