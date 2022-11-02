@@ -258,22 +258,33 @@ if __name__ == "__main__":
     sanitizer = Sanitizer(config_path, allowlist_file, safeclass_file)
     bin_name = 'pytorch_model.bin'
 
-    # list_of_unsanitized_pickles=[i for i in os.listdir('../untrusted_picklefiles/') if i.split('.')[1]=='pickle' or i.split('.')[1]=='pkl']
+    list_of_unsanitized_bin_dir=['../../../patch-torch-save/example_bins/maskformer/mask_end', 
+                                '../../../patch-torch-save/example_bins/maskformer/mask_end_nested', 
+                                '../../../patch-torch-save/example_bins/resnet', 
+                                '../../../patch-torch-save/example_bins/vit/vit_start', 
+                                '../../../patch-torch-save/example_bins/vit/vit_mul', 
+                                '../../../patch-torch-save/example_bins/yk_automodel']
+    
+    sanitizer.test_pkl(list_of_unsanitized_bin_dir[5])
+    while True:
+            q=input()
+            if q=='q':
+                break
+    
+    sanitizer.sanitize_bin(list_of_unsanitized_bin_dir[5], bin_name)
+    sanitizer.test_pkl(list_of_unsanitized_bin_dir[5])
     # list_of_unsanitized_pickles=['yk_attacked.pickle']
 
     # for unsan_name in list_of_unsanitized_pickles:
     #     print("Sanitizing ", unsan_name)        
     #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
 
-
-    sanitizer.sanitize_bin('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal', bin_name)
-    sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
+    # sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
+    # sanitizer.sanitize_bin('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal', bin_name)
+    # sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal')
     
     
 
     # sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/ben')
-    # while True:
-    #     q=input()
-    #     if q=='q':
-    #         break
+    
     # sanitizer.test_pkl('/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal_control')

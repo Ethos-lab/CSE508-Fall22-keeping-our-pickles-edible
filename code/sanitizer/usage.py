@@ -7,7 +7,7 @@ import os, shutil
 
 def open_browser(): # put arbitrary code in here
     import webbrowser
-    webbrowser.open("https://www.patreon.com/yannickilcher")
+    webbrowser.open("https://www.youtube.com/")
 
     # just to be extra sneaky, let's clean up...
     import sys
@@ -33,5 +33,5 @@ model.save_pretrained("/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal
 
 from transformers import AutoModel
 # import pdb;pdb.set_trace()
-model = AutoModel.from_pretrained("/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/ben") # or load from HF hub
+model = AutoModel.from_pretrained("/home/starc/SBU/Sem-1/NetSec/Project/patch-torch-save/mal_control") # or load from HF hub
 print(model) # it's just a normal model... but check your browser
