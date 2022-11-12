@@ -2,6 +2,7 @@ import pickletools
 import io
 import transformers
 from transformers import AutoModel
+from transformers import RobertaTokenizer, RobertaModel
 from pickletools import opcodes as opcode_lib
 import zipfile
 import os
@@ -24,9 +25,9 @@ class Sanitizer():
         self.MAX_BYTE = 0xFF
 
     @staticmethod
-    def test_pkl(dir_name):
+    def test_pkl(class_to_load, dir_name):
         print("loading model from ", dir_name)
-        model = AutoModel.from_pretrained(dir_name)  # or load from HF hub
+        model = class_to_load.from_pretrained(dir_name)  # or load from HF hub
         print(model)
 
     @staticmethod
@@ -262,12 +263,24 @@ class Sanitizer():
         self.pickle_ec.extract(dir_name, binname)
 
         # step 2
-        unzipped_dir = 'archive'
-        path_to_pickle_dir = join(dir_name, unzipped_dir)
-        self.sanitize_pickle(path_to_pickle_dir, 'data.pkl', 'data.pkl')
+        if os.path.isdir(join(dir_name, 'archive')):
+            unzipped_dir = 'archive'
+            path_to_pickle_dir = join(dir_name, unzipped_dir)
+            self.sanitize_pickle(path_to_pickle_dir, 'data.pkl', 'data.pkl')
+        elif os.path.isdir(join(dir_name, 'pickle_files')):
+            unpickled_dir = 'pickle_files'
+            path_to_pickle_dir = join(dir_name, unpickled_dir)
+            for i in os.listdir(path_to_pickle_dir):
+                try:
+                    self.sanitize_pickle(path_to_pickle_dir, i, i)
+                except Exception as e:
+                    print("Can't sanitize "+i+" due to some error", e)
+        else:
+            # for tar types
+            pass
 
         # step 3 
-        self.pickle_ec.compress(dir_name, binname, unzipped_dir)
+        self.pickle_ec.compress(dir_name, binname)
         return
 
 
@@ -284,16 +297,17 @@ if __name__ == "__main__":
                                    '../../../patch-torch-save/example_bins/resnet',
                                    '../../../patch-torch-save/example_bins/vit/vit_start',
                                    '../../../patch-torch-save/example_bins/vit/vit_mul',
-                                   '../../../patch-torch-save/example_bins/yk_automodel']
+                                   '../../../patch-torch-save/example_bins/yk_automodel',
+                                   '../../../patch-torch-save/roberta/']
 
-    sanitizer.test_pkl(list_of_unsanitized_bin_dir[5])
+    sanitizer.test_pkl(RobertaModel, list_of_unsanitized_bin_dir[6])
     while True:
         q = input()
         if q == 'q':
             break
 
-    sanitizer.sanitize_bin(list_of_unsanitized_bin_dir[5], bin_name)
-    sanitizer.test_pkl(list_of_unsanitized_bin_dir[5])
+    sanitizer.sanitize_bin(list_of_unsanitized_bin_dir[6], bin_name)
+    sanitizer.test_pkl(RobertaModel, list_of_unsanitized_bin_dir[6])
     # list_of_unsanitized_pickles=['yk_attacked.pickle']
 
     # for unsan_name in list_of_unsanitized_pickles:
