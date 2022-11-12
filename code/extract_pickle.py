@@ -46,17 +46,17 @@ class PickleEC():
             return False
 
     @staticmethod
-    def extract_zip(dir_name, bin_name):
+    def _extract_zip(dir_name, bin_name):
         with zipfile.ZipFile(join(dir_name, bin_name), 'r') as zip_ref:
             zip_ref.extractall(dir_name)
         return
 
     @staticmethod
-    def extract_tar(dir_name, bin_name):
+    def _extract_tar(dir_name, bin_name):
         pass
 
     @staticmethod
-    def extract_pickle(dir_name, bin_name):
+    def _extract_pickle(dir_name, bin_name):
         path_to_bin = os.path.join(dir_name, bin_name)
         places_to_start = [0]
         start_pos = 0
@@ -92,27 +92,26 @@ class PickleEC():
         path_to_bin = os.path.join(dir_name, bin_name)
         file_obj = self.read_pickle(path_to_bin)
         if self._is_zipfile(file_obj):
-            self.extract_zip(dir_name, bin_name)
+            self._extract_zip(dir_name, bin_name)
         elif self._is_tarfile(file_obj):
-            self.extract_tar(dir_name, bin_name)
+            self._extract_tar(dir_name, bin_name)
         else:
-            self.extract_pickle(dir_name, bin_name)
+            self._extract_pickle(dir_name, bin_name)
         return
 
-
     @staticmethod
-    def compress_zip(working_dir, bin_name, source_dir):
+    def _compress_zip(working_dir, bin_name, source_dir):
         print('cd ' + working_dir + '; zip -r ' + bin_name + ' ' + source_dir + '/')
         subprocess.run('cd ' + working_dir + '; zip -r ' + bin_name + ' ' + source_dir + '/', shell=True,
                        capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
 
     @staticmethod
-    def compress_tar(working_dir, bin_name, source_dir):
+    def _compress_tar(working_dir, bin_name, source_dir):
         pass
 
     @staticmethod
-    def compress_pickle(working_dir, bin_name, source_dir):
+    def _compress_pickle(working_dir, bin_name, source_dir):
         path_to_new_bin = os.path.join(working_dir, bin_name)
         path_to_pickle_files = os.path.join(working_dir, source_dir)
         list_of_pickle_files=[os.listdir(path_to_pickle_files)]
@@ -129,10 +128,10 @@ class PickleEC():
     def compress(self, working_dir, bin_name):
 
         if os.path.isdir(os.path.join(working_dir, 'archive')):
-            self.compress_zip(working_dir, bin_name, 'archive')
+            self._compress_zip(working_dir, bin_name, 'archive')
         elif os.path.isdir(os.path.join(working_dir, 'pickle_files')):
-            self.compress_pickle(working_dir, bin_name, 'pickle_files')
-        else: # for tar files
+            self._compress_pickle(working_dir, bin_name, 'pickle_files')
+        else:# for tar files
             pass
         return
 
