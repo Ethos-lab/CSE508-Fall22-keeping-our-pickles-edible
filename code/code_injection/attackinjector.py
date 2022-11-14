@@ -24,11 +24,12 @@ class AttackInjector():
     def write_global(last_memo_index, out_pickle, module_str):
         """
 		Params: 
-			module_str: String containing information about the module we're injecting
+            last_memo_index: Index that will be written as part of get command
 			out_pickle: File object that will be written to
+			module_str: String containing information about the module we're injecting
 
 		Returns:
-			None
+			Memo offset
 		
 		Writes a GLOBAL command to a pickle file assuming file cursor is at right place.
 		"""
@@ -42,11 +43,12 @@ class AttackInjector():
     def write_get(last_memo_index, out_pickle, memo_ind):
         """
 		Params: 
-			memo_index: Index that will be written as part of get command
+			last_memo_index: Index that will be written as part of get command
 			out_pickle: File object that will be written to
+			memo_ind: What index to use for get command
 
 		Returns:
-			None
+			Memo offset
 		
 		Writes a BINGET or LONG_BINGET command to a pickle file assuming file cursor is at right place.
 		"""
@@ -66,7 +68,7 @@ class AttackInjector():
 			out_pickle: File object that will be written to
 
 		Returns:
-			None
+			Memo offset
 		
 		Writes a BINPUT or LONG_BINPUT command to a pickle file assuming file cursor is at right place.
 		"""
@@ -80,6 +82,17 @@ class AttackInjector():
     
     @staticmethod
     def write_binunicode(last_memo_index, out_pickle, unicode_str):
+        """
+		Params: 
+			last_memo_index: Index that will be written as part of get command
+			out_pickle: File object that will be written to
+			unicode_str: String to write
+
+		Returns:
+			Memo offset
+		
+		Writes a BINUNICODE command to a pickle file assuming file cursor is at right place.
+		"""
         attack_bytes = unicode_str.encode('raw_unicode_escape')
         out_pickle.write(opcode_library[BINUNICODE].code.encode('raw_unicode_escape'))
         out_pickle.write(struct.pack("<L", len(attack_bytes)))
@@ -88,7 +101,19 @@ class AttackInjector():
         return 0
 
     @staticmethod
+    
     def write_simple_opcode(last_memo_index, out_pickle, opcode_lib_ind):
+        """
+		Params: 
+			last_memo_index: Index that will be written as part of get command
+			out_pickle: File object that will be written to
+			opcode_lib_ind: Index in opcode library to use
+
+		Returns:
+			Memo offset
+		
+		Writes an arbitrary PVM command that is only an opcode to a pickle file assuming file cursor is at right place.
+		"""
         out_pickle.write(opcode_library[opcode_lib_ind].code.encode('raw_unicode_escape'))
 
         return 0
@@ -230,7 +255,10 @@ class AttackInjector():
             in_pickle.seek(attack_pos)
             out_pickle.write(in_pickle.read())
 
-    def _inject_attacks(self, attacks, attack_indices, attack_args, in_pickle, out_pickle):
+    def inject_attacks(self, attacks, attack_indices, attack_args, in_pickle, out_pickle):
+        """
+		Injects a list of attacks into pickle file
+		"""
         # First, extract every command from the pickle file
         opcodes, args, pos = self._get_all_commands(in_pickle)
 
