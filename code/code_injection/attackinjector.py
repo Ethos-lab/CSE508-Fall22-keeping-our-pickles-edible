@@ -320,7 +320,7 @@ class AttackInjector():
             out_pickle.write(in_pickle.read())
 
 
-    def inject_attacks(self, attacks, attack_indices, attack_args, in_pickle, out_pickle):
+    def _inject_attacks(self, attacks, attack_indices, attack_args, in_pickle, out_pickle):
         """
 		Injects a list of attacks into pickle file
 		"""
@@ -372,6 +372,26 @@ class AttackInjector():
 
         return memo_mod_start
 
+    def inject_attacks_pickle(self, attacks, attack_indices, attack_args, in_pickle_name, out_pickle_name):
+        # Open both of our pickle files
+        in_pickle = open(in_pickle_name, "rb")
+        out_pickle = open(out_pickle_name, "wb")
+
+        # Injection time (modifies out_pickle)
+        memo_mod_start = self._inject_attacks(
+            attacks,
+            attack_indices,
+            attack_args,
+            in_pickle,
+            out_pickle
+        )
+
+        # Inject modified pickle file into bin and create modified bin
+        in_pickle.close()
+        out_pickle.close()
+
+        return memo_mod_start
+
     def inject_attacks_bin(self, attacks, attack_indices, attack_args, in_bin_dir, out_bin_dir):
         # Extract our bin file so we can manipulate its contents
         bin_filename = os.path.basename(in_bin_dir)
@@ -387,7 +407,7 @@ class AttackInjector():
 
         # Injection time (modifies out_pickle)
         out_pickle_write = open(out_pickle_temp.name, "wb")
-        memo_mod_start = self.inject_attacks(
+        memo_mod_start = self._inject_attacks(
             attacks,
             attack_indices,
             attack_args,
