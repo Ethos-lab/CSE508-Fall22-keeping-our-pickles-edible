@@ -22,7 +22,7 @@ attack_args = [(bad_module_name, bad_qualname, payload)]
 
 # Injection time on binary file (Happens sequentially)
 in_pickle_name = "/Users/alrivero/Documents/CSE_508/skops-yu3ifopn.pkl"
-out_pickle_name = "/Users/alrivero/Documents/CSE_508/mal_bins/detr/detr-resnet-50-infected.bin"
+out_pickle_name = "/Users/alrivero/Documents/CSE_508/skops-yu3ifopn-infected.pkl"
 
 attack_injector.inject_attacks_pickle(
     attacks,
