@@ -67,7 +67,197 @@ class Detector():
 		file_data.seek(position_to_restore)
 		return {'info': None, 'pos': 1000000000000, 'arg': 1000000000000}
 
-	def get_global_reduce_data(self, data_bytearray, file_data, previous_pos = -1):
+	def global_reuse_calls(self, file_data):
+		"""
+		Params:
+			file_data: The file object of the current pickle file
+
+		Returns:
+			Dict containing the indices as key and global opcode data as value
+
+		This function check for the possible global reuse attacks and stores the BINGET(those reuse calls)
+		with the appropriate global calls along with its argument.
+  
+  		"""
+    
+		#To keep track of the global call and the immediate next BINPUT
+		global_reuse_flag = False
+  
+		current_pointer = file_data.tell()
+		file_data.seek(0)
+  
+		global_reuse_dict = dict()
+		# To store the memo index and the global data at that particular index, in order to check for global reuse attack
+  
+		for info, arg, pos in genops(file_data):
+
+			if info.name == 'GLOBAL':
+				arg = arg.replace(' ', '.')
+    		
+			if info.name == 'GLOBAL' and arg not in self._ALLOWLIST:
+				global_reuse_flag = True
+				# Set flag to true indicating if the next opcode is BINPUT then global call can be reused later
+				global_data = {"info": info, "arg": arg}
+      
+			elif global_reuse_flag and (info.name == 'BINPUT ' or info.name == 'LONG_BINPUT'):
+				global_reuse_flag = False
+				# The next opcode is indeed BINPUT and store the global data at that particular argument index,
+    			# in order to check for global reuse attack
+				global_reuse_dict[arg] = global_data
+
+			else:
+				# If anything other than BINPUT is encountered then reset the flag
+				global_reuse_flag = False
+  
+		file_data.seek(current_pointer)
+  
+		return global_reuse_dict
+
+	def exists_nested_attack(self, file_data, global_reuse_dict, previous_pos = -1):
+		"""
+  		Params:
+			file_data: The file object of the current pickle file
+			previous_pos(int, optional): Defaults to -1. A pointer to check for the required opcodes after it.
+
+		Returns:
+			True if the file has nested attacks present, False otherwise.
+   
+		"""
+		# global_flag = False
+		# global_reuse_flag = False
+  
+		current_pointer = file_data.tell()
+		file_data.seek(0)
+  
+		global_nested_stack = []
+		# global_nested_stack will contain data as soon as a global call in encountered, this will help to check if nested attacks exists
+  
+  
+		for info, arg, pos in genops(file_data):
+
+			if pos <= previous_pos:
+				continue
+
+			# print(info.name)
+
+			if info.name == 'GLOBAL':
+				arg = arg.replace(' ', '.')
+
+			if len(global_nested_stack) == 0 and info.name == 'GLOBAL' and arg not in self._ALLOWLIST:
+				global_nested_stack.append(info.arg)
+    
+			elif len(global_nested_stack) == 0 and info.name == 'BINGET' and arg in global_reuse_dict.keys():
+				# The way we check for global calls, simply also check for BINGET references which might reuse the previous
+				# global calls
+				global_nested_stack.append(global_reuse_dict[arg]["arg"])
+    
+			# If REDUCE is encountered before the next GLOBAL then that attack does not have attacks nested in it, so continue checking
+			elif len(global_nested_stack) >= 1 and info.name == 'REDUCE':
+				global_nested_stack.pop()
+    
+			elif len(global_nested_stack) >= 1 and info.name == 'BINGET' and arg in global_reuse_dict.keys():
+				file_data.seek(current_pointer)
+				return True
+    
+			elif len(global_nested_stack) >= 1 and info.name == 'GLOBAL' and arg not in self._ALLOWLIST:
+				file_data.seek(current_pointer)
+				return True
+
+		file_data.seek(current_pointer)
+		return False
+
+	def get_neseted_attack_data(self, data_bytearray, file_data, global_reuse_dict):
+		"""
+		Params:
+			file_data: A file object for the pickle file
+			global_reuse_dict: A dictionary containing the binget arguments where global calls are being reused
+		
+		Returns:
+			nested_mal_opcode_data: A list containing the information about the nested attack calls. 
+   			The global opcode (info, arg, pos), reduce opcode (info, arg, pos), and the memo ids
+      		used beforeand after the attack the elements of each list. There are multiple such lists
+        	in nested_mal_opcode_data. 
+		  
+		"""
+		# global_flag = False
+		# reduce_flag = False
+		attack_end_flag = False
+		# global_reuse_flag = False
+		# To flag all the possible attacks that reuse the global opcode using BINGET
+  
+		bef_attack_binput_arg = 0
+		aft_attack_binput_arg = 0
+  
+		nested_mal_opcode_data=[]
+		# Final list containing the data about the nested attack 
+		global_nested_stack = []
+		# Global_nested_stack will contain the global opcode data and bef_attack_binput_arg
+		nested_attack_stack = []
+		# Nested_attack_stack will contain the global, reduce data and bef_attack_binput_arg
+  
+  
+		for info, arg, pos in genops(file_data):
+    
+			if info.name == 'GLOBAL':
+				arg = arg.replace(' ', '.')
+   
+			if info.name == 'BINPUT' or info.name == 'LONG_BINPUT':
+				bef_attack_binput_arg = arg
+    
+				# If we have a complete attack(indicated by attack_end_flag) then check to store the first BINPUT after the attack
+				if attack_end_flag:
+					# First binput after the attack is found
+					# Use data_bytearray to detect pop and binput
+					if info.name=='BINPUT':
+         
+						if data_bytearray[pos+2:pos+3]==bytearray(b'0'):
+							binput_dict=self.find_next_binput(file_data, pos+3)
+							aft_attack_binput_arg = binput_dict['arg']
+       
+						else:
+							aft_attack_binput_arg = arg
+					else:
+         
+						if data_bytearray[pos+5:pos+6]==bytearray(b'0'):
+							binput_dict = self.find_next_binput(file_data, pos+6)
+							aft_attack_binput_arg = binput_dict['arg']
+       
+						else:
+							aft_attack_binput_arg = arg
+
+					# global_flag = False
+					# reduce_flag = False
+
+					temp_list_data = nested_attack_stack.pop()
+     
+					if len(global_nested_stack) == 0:
+						# No further nesting inside this attack, so push it into the nested_mal_opcode_data
+						nested_mal_opcode_data.append([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_binput_arg])
+					attack_end_flag = False
+    
+			elif info.name == 'GLOBAL' and arg not in self._ALLOWLIST:
+				global_data = {"info": info, "arg": arg, "pos": pos}
+				global_nested_stack.append([global_data, bef_attack_binput_arg])
+    
+			elif info.name == 'BINGET' and arg in global_reuse_dict.keys():
+				# The way we check for global calls, simply also check for BINGET references which might reuse the previous
+				# global calls
+			 	# Arg in keys indicates that BINGET is refering to a GLOBAL attack call, i.e global reuse attack
+				reused_global_data = global_reuse_dict[arg]
+				global_data = {"info": reused_global_data["info"], "arg": reused_global_data["arg"], "pos": pos}
+				global_nested_stack.append([global_data, bef_attack_binput_arg])
+			
+			elif len(global_nested_stack) >= 1 and info.name == 'REDUCE':
+				reduce_data = {"info": info, "arg": arg, "pos": pos}
+				attack_end_flag = True
+				temp_list_data = global_nested_stack.pop()
+				# Attack is complete so remove from global stack and append to nested_attack_stack to wait for BINPUT after the attack
+				nested_attack_stack.append([temp_list_data[0], reduce_data, temp_list_data[1]])
+
+		return nested_mal_opcode_data
+
+
+	def get_global_reduce_data(self, data_bytearray, file_data, global_reuse_dict, previous_pos = -1):
 		"""
 		Params:
 			file_data: a file object for the pickle file
@@ -85,11 +275,11 @@ class Detector():
 		mal_opcode_data=[]
 		global_data = {}
 		reduce_data = {}
-		
+  
 		for info, arg, pos in genops(file_data):
 			if info.name == 'GLOBAL':
 				arg = arg.replace(' ', '.')
-			
+   
 			if not global_flag and not reduce_flag and (info.name == 'BINPUT' or info.name == 'LONG_BINPUT'):
 				bef_attack_binput_arg = arg
 
@@ -97,6 +287,14 @@ class Detector():
 				global_flag = True
 				global_data = {"info": info, "arg": arg, "pos": pos}	
 			
+			elif info.name == 'BINGET' and arg in global_reuse_dict.keys():
+				# The way we check for global calls, simply also check for BINGET references which might reuse the previous
+				# global calls
+			 	# Arg in keys indicates that BINGET is refering to a GLOBAL attack call, i.e global reuse attack
+				reused_global_data = global_reuse_dict[arg]
+				global_flag = True
+				global_data = {"info": reused_global_data["info"], "arg": reused_global_data["arg"], "pos": pos}
+   
 			elif global_flag and info.name == 'REDUCE':
 				reduce_flag = True
 				reduce_data = {"info": info, "arg": arg, "pos": pos}
