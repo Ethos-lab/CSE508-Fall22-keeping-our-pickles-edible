@@ -21,7 +21,6 @@ REDUCE = 57
 EVAL_EXEC_MEMO_LEN = 4
 GLOBAL_END = b"\x0A"
 BYTE_MAX = 0xFF
-
 ZIP_PICKLE = "archive/data.pkl"
 
 class AttackInjector():
@@ -331,6 +330,7 @@ class AttackInjector():
         seek_index = 0
         memo_offset = 0
         last_memo_index = -1
+        last_attack_pos = None
         incremented_memo_args = False
         memo_mod_start = []
         for attack, attack_index, attack_args in zip(attacks, attack_indices, attack_args):
@@ -351,6 +351,13 @@ class AttackInjector():
 
             # Increment the remaining memo records
             incremented_memo_args = self._increment_memo_args(attack_index, memo_offset, opcodes, args)
+
+            # Write any commands we skipped over
+            if last_attack_pos is not None:
+                in_pickle.seek(last_attack_pos)
+                bytes_read = attack_pos - last_attack_pos
+                out_pickle.write(in_pickle.read(bytes_read))
+            last_attack_pos = attack_pos
 
             # Record the start of each memo modification
             if attack_memo_len > 0:
@@ -376,7 +383,8 @@ class AttackInjector():
     def inject_attacks_pickle(self, attacks, attack_indices, attack_args, in_pickle_name, out_pickle_name):
         # Open both of our pickle files
         in_pickle = open(in_pickle_name, "rb")
-        out_pickle = open(out_pickle_name, "wb")
+        out_pickle_temp = NamedTemporaryFile()
+        out_pickle_write = open(out_pickle_temp.name, "wb")
 
         # Injection time (modifies out_pickle)
         memo_mod_start = self._inject_attacks(
@@ -384,12 +392,19 @@ class AttackInjector():
             attack_indices,
             attack_args,
             in_pickle,
-            out_pickle
+            out_pickle_write
         )
 
-        # Inject modified pickle file into bin and create modified bin
+        # Close opened files
         in_pickle.close()
+        out_pickle_write.close()
+
+        # Using temp, copy into final destination
+        out_pickle = open(out_pickle_name, "wb")
+        out_pickle_read = open(out_pickle_temp.name, "rb")
+        shutil.copyfileobj(out_pickle_read, out_pickle)
         out_pickle.close()
+        out_pickle_read.close()
 
         return memo_mod_start
 
