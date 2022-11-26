@@ -20,8 +20,8 @@ attack_indices = [10] # Indicies in original pickle file before tampering (in or
 attack_args = [(bad_module, payload)]
 
 # Injection time on binary file (Happens sequentially)
-in_bin_dir = "/Users/alrivero/Documents/CSE_508/mal_bins/detr/detr-resnet-50.bin"
-out_bin_dir = "/Users/alrivero/Documents/CSE_508/mal_bins/detr/detr-resnet-50-nested-infected.bin"
+in_bin_dir = "/Users/alrivero/Documents/CSE_508/mal_bins/mask/maskformer-swin-base-coco.bin"
+out_bin_dir = "/Users/alrivero/Documents/CSE_508/mal_bins/mask/maskformer-swin-base-coco-nested.bin"
 attack_injector.inject_attacks_bin(
     attacks,
     attack_indices,

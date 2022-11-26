@@ -33,7 +33,7 @@ memo_start_inds = attack_injector.inject_attacks_bin(
 # Now inject a few attacks that use the memo
 attacks = [AttackInjector.module_attack_using_memo, AttackInjector.module_attack_using_memo]
 attack_indices = [256, 1000] # Indicies in original pickle file before tampering (in order pls)
-attack_args = [(memo_start_inds[0] + 1, payload), (memo_start_inds[0] + 1, payload)]
+attack_args = [(memo_start_inds[0], payload), (memo_start_inds[0], payload)]
 
 attack_injector.inject_attacks_bin(
     attacks,
