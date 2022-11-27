@@ -266,7 +266,7 @@ class AttackInjector():
 
         return last_memo_index
 
-    def _increment_memo_args(self, start_index, memo_offset, opcodes, args):
+    def _increment_memo_args(self, start_index, last_memo_index, memo_offset, opcodes, args):
         """
 		Params: 
 			attack_index: Index we're starting our incrementation by
@@ -281,7 +281,10 @@ class AttackInjector():
         # Increment the remaining memo records
         incremented_memo_record = False
         for i in range(start_index, len(opcodes)):
-            if opcodes[i].name == "BINPUT" or opcodes[i].name == "LONG_BINPUT":
+            opcode_is_memo = opcodes[i].name == "BINPUT" or opcodes[i].name == "LONG_BINPUT"
+            opcode_is_get = opcodes[i].name == "BINGET" or opcodes[i].name == "LONG_BINGET"
+
+            if (opcode_is_memo or opcode_is_get) and args[i] > last_memo_index:
                 incremented_memo_record = True
                 args[i] += memo_offset
         
@@ -355,7 +358,7 @@ class AttackInjector():
             memo_offset += attack_memo_len
 
             # Increment the remaining memo records
-            incremented_memo_args = self._increment_memo_args(attack_index, memo_offset, opcodes, args)
+            incremented_memo_args = self._increment_memo_args(attack_index, last_memo_index, memo_offset, opcodes, args)
 
             # Record the start of each memo modification
             if attack_memo_len > 0:
