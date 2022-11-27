@@ -287,7 +287,7 @@ class AttackInjector():
         
         return incremented_memo_record
     
-    def _reconstruct_pickle_end(self, attack_index, attack_len, uses_memo, last_memo_index, in_pickle, out_pickle, opcodes, args, pos):
+    def _reconstruct_pickle(self, attack_index, end_index, uses_memo, last_memo_index, in_pickle, out_pickle, opcodes, args, pos):
         """
 		Reconstructs the end of a pickle file which has been modified.
 		"""
@@ -295,9 +295,9 @@ class AttackInjector():
         attack_pos = pos[attack_index]
 
         if uses_memo:
-            rem_opcodes = opcodes[attack_index:]
-            rem_args = args[attack_index:]
-            rem_pos = pos[attack_index:]
+            rem_opcodes = opcodes[attack_index:end_index]
+            rem_args = args[attack_index:end_index]
+            rem_pos = pos[attack_index:end_index]
 
             for i in range(len(rem_opcodes)):
                 opcode_is_memo = rem_opcodes[i].name == "BINPUT" or rem_opcodes[i].name == "LONG_BINPUT"
@@ -333,7 +333,12 @@ class AttackInjector():
         last_attack_pos = None
         incremented_memo_args = False
         memo_mod_start = []
-        for attack, attack_index, attack_args in zip(attacks, attack_indices, attack_args):
+        for i in range(len(attacks)):
+            # Define a few variables
+            attack = attacks[i]
+            attack_index = attack_indices[i]
+            attack_arg = attack_args[i]
+
             # Find what memo record, if any, we left off on
             last_memo_index = self._get_last_memo_index(attack_index, opcodes, args) + memo_offset
 
@@ -343,7 +348,7 @@ class AttackInjector():
             out_pickle.write(in_pickle.read(attack_pos))
 
             # Inject our attack and record how long it was in the PVM memo record
-            attack_memo_len = attack(last_memo_index, out_pickle, *attack_args)
+            attack_memo_len = attack(last_memo_index, out_pickle, *attack_arg)
 
             # Update our seek index and memo offset
             seek_index = attack_pos
@@ -352,31 +357,25 @@ class AttackInjector():
             # Increment the remaining memo records
             incremented_memo_args = self._increment_memo_args(attack_index, memo_offset, opcodes, args)
 
-            # Write any commands we skipped over
-            if last_attack_pos is not None:
-                in_pickle.seek(last_attack_pos)
-                bytes_read = attack_pos - last_attack_pos
-                out_pickle.write(in_pickle.read(bytes_read))
-            last_attack_pos = attack_pos
-
             # Record the start of each memo modification
             if attack_memo_len > 0:
                 memo_mod_start.append(last_memo_index + 1)
             else:
                 memo_mod_start.append(None)
 
-        # Reconstruct the rest of the pickle file
-        self._reconstruct_pickle_end(
-            attack_indices[-1],
-            memo_offset,
-            incremented_memo_args,
-            last_memo_index,
-            in_pickle,
-            out_pickle,
-            opcodes,
-            args,
-            pos
-        )
+            # Reconstruct any commands we skipped over or the rest of the pickle file
+            next_attack_index = attack_indices[i + 1] if i + 1 < len(attacks) else len(opcodes) + 1
+            self._reconstruct_pickle(
+                attack_index,
+                next_attack_index,
+                incremented_memo_args,
+                last_memo_index,
+                in_pickle,
+                out_pickle,
+                opcodes,
+                args,
+                pos
+            )
 
         return memo_mod_start
 
