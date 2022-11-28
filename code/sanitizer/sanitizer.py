@@ -396,20 +396,21 @@ if __name__ == "__main__":
 
     # sanitizer.sanitize_bin(list_of_unsanitized_bin_dir[6], bin_name)
     # sanitizer.test_pkl(RobertaModel, list_of_unsanitized_bin_dir[6])
-    # list_of_unsanitized_pickles=['mask_end_nested.pickle']
-
+    
+    # list_of_unsanitized_pickles=['yk_attacked.pickle','resnet_1.pickle','vit_start.pickle','mask_end_nested.pickle','skops-yu3ifopn-infected.pkl','mask_end.pickle','vit_mul_middle_3.pickle','yk.pickle']
     # for unsan_name in list_of_unsanitized_pickles:
     #     print("Sanitizing ", unsan_name)        
     #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
     
-    dir_path = 'C:\\Users\\Admin\\Downloads'
-    sanitizer.sanitize_bin(dir_path, 'detr-resnet-50-nested-infected.bin')
+    # dir_path = '/home/shreej23/Downloads'
+    # sanitizer.sanitize_bin(dir_path, 'detr-resnet-50-nested.bin')
+    # sanitizer.sanitize_bin(dir_path, 'maskformer-swin-base-coco-nested.bin')
     
-    list_of_unsanitized_pickles=['yk_attacked.pickle']
+    list_of_unsanitized_pickles=['skops-yu3ifopn-infected.pkl']
 
-    # for unsan_name in list_of_unsanitized_pickles:
-    #     print("Sanitizing ", unsan_name)        
-    #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
+    for unsan_name in list_of_unsanitized_pickles:
+        print("Sanitizing ", unsan_name)        
+        sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
     
     # sanitizer.test_pkl('C:\Users\Admin\Downloads\patch-torch-save\mal')
     # sanitizer.sanitize_bin('C:\Users\Admin\Downloads\patch-torch-save\mal', bin_name)
