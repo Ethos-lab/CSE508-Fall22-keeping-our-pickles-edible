@@ -158,83 +158,6 @@ class Sanitizer():
                 pos_offset += 5
         return data_bytearray, pos_offset
 
-    # def sanitize_nested_attack(self,dir_name, pickle_name, new_pickle_name):
-    #     """
-    #     Params:
-    #         dir_name: The name of the directory where the pickle file is present. 
-    #         pickle_name: The name of the pickle file
-    #         new_pickle_name: The name of the new pickle file that needs to be created.
-        
-    #     Returns: 
-    #         None
-        
-    #     Will be called only for nested attacks:
-    #         1. Read pickle file and detect the nested malicious opcodes, localize them using the code in Detector
-    #         2.1. Use the above localization information to delete the relevant opcodes and replace with empty dictionary
-    #         if necessary
-    #         2.2. Make sure that the memo indexes in the BINPUT/LONG_BINPUT opcodes are rectified according to offset. 
-    #         2.3. Make sure that the memo index references in the BINGET/LONG_BINGET opcodes are rectified according the
-    #         reference range.
-    #         3. Write to new pickle file
-        
-    #     """
-        
-    #     # step 1
-    #     path_to_pickle_file = join(dir_name, pickle_name)
-    #     pickle_file_object = self.pickle_ec.read_pickle(path_to_pickle_file)
-    #     data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
-
-    #     # detected parts with malicious code that needs to be removed.
-    #     mal_opcode_data = self.detector.get_neseted_attack_data(data_bytearray, pickle_file_object)
-    #     print("In nested attack")
-    #     print(mal_opcode_data)
-    #     # contains global opcode info, reduce opcode info, info about next binput arg and prev binput arg.
-
-    #     # step 2
-
-    #     sanitizer_pos_offset = 0  # needed coz deletions will happen
-    #     sanitizer_memo_offset = 0  # needed coz binput args will get changed
-
-    #     next_attack_bef_binput_arg = 0  # will be used to set scope in change_memo_indexes
-    #     prev_attack_aft_binput_arg = 0  # will be used to set offset ranges for binput args
-
-    #     binput_arg_offset_ranges = []
-    #     for id, val in enumerate(mal_opcode_data):
-
-    #         global_data = val[0]
-    #         reduce_data = val[1]
-    #         bef_attack_binput_arg = val[2]
-    #         aft_attack_binput_arg = val[3]
-
-    #         if id == len(mal_opcode_data) - 1:
-    #             next_attack_bef_binput_arg = 1000000000000
-    #         else:
-    #             next_attack_bef_binput_arg = mal_opcode_data[id + 1][2]
-
-    #         start_byte = global_data['pos'] - sanitizer_pos_offset
-    #         end_byte = reduce_data['pos'] - sanitizer_pos_offset
-    #         sanitizer_pos_offset += (end_byte - start_byte)
-    #         data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
-    #         data_bytearray, sanitizer_pos_offset = self.remove_binput(data_bytearray, start_byte, sanitizer_pos_offset)
-
-    #         data_bytearray = self.write_bytes(data_bytearray, start_byte, bytearray(b'}'))
-
-    #         binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, bef_attack_binput_arg, sanitizer_memo_offset))
-    #         if aft_attack_binput_arg != 1000000000000:
-    #             if bef_attack_binput_arg == 0:
-    #                 sanitizer_memo_offset += (aft_attack_binput_arg - bef_attack_binput_arg)
-    #             else:
-    #                 sanitizer_memo_offset += (aft_attack_binput_arg - bef_attack_binput_arg - 1)
-    #             
-    #             prev_attack_aft_binput_arg = aft_attack_binput_arg
-
-    #     binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
-
-    # If needed TODO, remove the inner neseted calls which pop from the stack, that is do not affect the necessary part of the code
-     
-    #     print("End of the nested attack sanitizer")
-    #     return
-
     def sanitize_pickle(self, dir_name, pickle_name, new_pickle_name):
         """
         Params:
@@ -262,12 +185,12 @@ class Sanitizer():
         data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
         
         global_reuse_dict = dict()
-        global_reuse_dict, protocol = self.detector.global_reuse_calls_and_protocol(pickle_file_object)
+        global_reuse_dict, proto = self.detector.global_reuse_calls_and_protocol(pickle_file_object)
         
         # detected parts with malicious code that needs to be removed.
 
         if self.detector.exists_nested_attack(pickle_file_object, global_reuse_dict):
-            mal_opcode_data = self.detector.get_neseted_attack_data(data_bytearray, pickle_file_object, global_reuse_dict)
+            mal_opcode_data = self.detector.get_nested_attack_data(data_bytearray, pickle_file_object, global_reuse_dict)
         else:
             mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object, global_reuse_dict)
         # print(mal_opcode_data)
@@ -396,21 +319,20 @@ if __name__ == "__main__":
 
     # sanitizer.sanitize_bin(list_of_unsanitized_bin_dir[6], bin_name)
     # sanitizer.test_pkl(RobertaModel, list_of_unsanitized_bin_dir[6])
-    
-    # list_of_unsanitized_pickles=['yk_attacked.pickle','resnet_1.pickle','vit_start.pickle','mask_end_nested.pickle','skops-yu3ifopn-infected.pkl','mask_end.pickle','vit_mul_middle_3.pickle','yk.pickle']
+    # list_of_unsanitized_pickles=['mask_end_nested.pickle']
+
     # for unsan_name in list_of_unsanitized_pickles:
     #     print("Sanitizing ", unsan_name)        
     #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
     
-    # dir_path = '/home/shreej23/Downloads'
-    # sanitizer.sanitize_bin(dir_path, 'detr-resnet-50-nested.bin')
-    # sanitizer.sanitize_bin(dir_path, 'maskformer-swin-base-coco-nested.bin')
+    dir_path = 'C:\\Users\\Admin\\Downloads'
+    sanitizer.sanitize_bin(dir_path, 'detr-resnet-50-nested-infected.bin')
     
-    list_of_unsanitized_pickles=['skops-yu3ifopn-infected.pkl']
+    list_of_unsanitized_pickles=['yk_attacked.pickle']
 
-    for unsan_name in list_of_unsanitized_pickles:
-        print("Sanitizing ", unsan_name)        
-        sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
+    # for unsan_name in list_of_unsanitized_pickles:
+    #     print("Sanitizing ", unsan_name)        
+    #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
     
     # sanitizer.test_pkl('C:\Users\Admin\Downloads\patch-torch-save\mal')
     # sanitizer.sanitize_bin('C:\Users\Admin\Downloads\patch-torch-save\mal', bin_name)

@@ -30,16 +30,16 @@ class AttackInjector():
     @staticmethod
     def write_global(last_memo_index, out_pickle, module_str):
         """
-		Params: 
+        Params: 
             last_memo_index: Index that will be written as part of get command
-			out_pickle: File object that will be written to
-			module_str: String containing information about the module we're injecting
+            out_pickle: File object that will be written to
+            module_str: String containing information about the module we're injecting
 
-		Returns:
-			Memo offset
-		
-		Writes a GLOBAL command to a pickle file assuming file cursor is at right place.
-		"""
+        Returns:
+            Memo offset
+        
+        Writes a GLOBAL command to a pickle file assuming file cursor is at right place.
+        """
         out_pickle.write(opcode_library[GLOBAL].code.encode('raw_unicode_escape'))
         out_pickle.write(module_str.encode('raw_unicode_escape'))
         out_pickle.write(GLOBAL_END)
@@ -49,16 +49,16 @@ class AttackInjector():
     @staticmethod
     def write_get(last_memo_index, out_pickle):
         """
-		Params: 
-			last_memo_index: Index that will be written as part of get command
-			out_pickle: File object that will be written to
-			memo_ind: What index to use for get command
+        Params: 
+            last_memo_index: Index that will be written as part of get command
+            out_pickle: File object that will be written to
+            memo_ind: What index to use for get command
 
-		Returns:
-			Memo offset
-		
-		Writes a BINGET or LONG_BINGET command to a pickle file assuming file cursor is at right place.
-		"""
+        Returns:
+            Memo offset
+        
+        Writes a BINGET or LONG_BINGET command to a pickle file assuming file cursor is at right place.
+        """
         memo_opcode = BINGET if last_memo_index <= BYTE_MAX else LONG_BINGET
         byte_length = 1 if last_memo_index <= BYTE_MAX else 4
         
@@ -70,15 +70,15 @@ class AttackInjector():
     @staticmethod
     def write_put(last_memo_index, out_pickle):
         """
-		Params: 
-			memo_index: Index that will be written as part of put command
-			out_pickle: File object that will be written to
+        Params: 
+            memo_index: Index that will be written as part of put command
+            out_pickle: File object that will be written to
 
-		Returns:
-			Memo offset
-		
-		Writes a BINPUT or LONG_BINPUT command to a pickle file assuming file cursor is at right place.
-		"""
+        Returns:
+            Memo offset
+        
+        Writes a BINPUT or LONG_BINPUT command to a pickle file assuming file cursor is at right place.
+        """
         memo_opcode = BINPUT if last_memo_index <= BYTE_MAX else LONG_BINPUT
         byte_length = 1 if last_memo_index <= BYTE_MAX else 4
         
@@ -90,16 +90,16 @@ class AttackInjector():
     @staticmethod
     def write_binunicode(last_memo_index, out_pickle, unicode_str):
         """
-		Params: 
-			last_memo_index: Index that will be written as part of get command
-			out_pickle: File object that will be written to
-			unicode_str: String to write
+        Params: 
+            last_memo_index: Index that will be written as part of get command
+            out_pickle: File object that will be written to
+            unicode_str: String to write
 
-		Returns:
-			Memo offset
-		
-		Writes a BINUNICODE command to a pickle file assuming file cursor is at right place.
-		"""
+        Returns:
+            Memo offset
+        
+        Writes a BINUNICODE command to a pickle file assuming file cursor is at right place.
+        """
         attack_bytes = unicode_str.encode('raw_unicode_escape')
         out_pickle.write(opcode_library[BINUNICODE].code.encode('raw_unicode_escape'))
         out_pickle.write(struct.pack("<L", len(attack_bytes)))
@@ -110,16 +110,16 @@ class AttackInjector():
     @staticmethod
     def write_short_binunicode(last_memo_index, out_pickle, unicode_str):
         """
-		Params: 
-			last_memo_index: Index that will be written as part of get command
-			out_pickle: File object that will be written to
-			unicode_str: String to write
+        Params: 
+            last_memo_index: Index that will be written as part of get command
+            out_pickle: File object that will be written to
+            unicode_str: String to write
 
-		Returns:
-			Memo offset
-		
-		Writes a BINUNICODE command to a pickle file assuming file cursor is at right place.
-		"""
+        Returns:
+            Memo offset
+        
+        Writes a BINUNICODE command to a pickle file assuming file cursor is at right place.
+        """
         attack_bytes = unicode_str.encode('raw_unicode_escape')
         out_pickle.write(opcode_library[SHORT_BINUNICODE].code.encode('raw_unicode_escape'))
         out_pickle.write(struct.pack("<b", len(attack_bytes)))
@@ -130,16 +130,16 @@ class AttackInjector():
     @staticmethod
     def write_simple_opcode(last_memo_index, out_pickle, opcode_lib_ind):
         """
-		Params: 
-			last_memo_index: Index that will be written as part of get command
-			out_pickle: File object that will be written to
-			opcode_lib_ind: Index in opcode library to use
+        Params: 
+            last_memo_index: Index that will be written as part of get command
+            out_pickle: File object that will be written to
+            opcode_lib_ind: Index in opcode library to use
 
-		Returns:
-			Memo offset
-		
-		Writes an arbitrary PVM command that is only an opcode to a pickle file assuming file cursor is at right place.
-		"""
+        Returns:
+            Memo offset
+        
+        Writes an arbitrary PVM command that is only an opcode to a pickle file assuming file cursor is at right place.
+        """
         out_pickle.write(opcode_library[opcode_lib_ind].code.encode('raw_unicode_escape'))
 
         return 0
@@ -226,16 +226,16 @@ class AttackInjector():
 
     def _get_all_commands(self, in_pickle):
         """
-		Params: 
-			in_pickle: bytes object containing pickle file
+        Params: 
+            in_pickle: bytes object containing pickle file
 
-		Returns:
-			opcodes: List of opcodes used
-			args: List of arguments for opcodes used
-			positions: Starting byte position in pickle file for each command
-		
-		Gets all commands used wihin a pickle file.
-		"""
+        Returns:
+            opcodes: List of opcodes used
+            args: List of arguments for opcodes used
+            positions: Starting byte position in pickle file for each command
+        
+        Gets all commands used wihin a pickle file.
+        """
         opcodes = []
         args = []
         positions = []
@@ -249,16 +249,16 @@ class AttackInjector():
 
     def _get_last_memo_index(self, attack_index, opcodes, args):
         """
-		Params: 
-			attack_index: Index we're attack at
-			opcodes: Opcodes of each commmand
-			args: Arguments of each command
+        Params: 
+            attack_index: Index we're attack at
+            opcodes: Opcodes of each commmand
+            args: Arguments of each command
 
-		Returns:
-			last_memo_index: Index of the last (LONG_)BINPUT command used
-		
-		Gets the index of the last (LONG_)BINPUT command used up until the attack index
-		"""
+        Returns:
+            last_memo_index: Index of the last (LONG_)BINPUT command used
+        
+        Gets the index of the last (LONG_)BINPUT command used up until the attack index
+        """
         last_memo_index = -1
         for i in range(attack_index):
             if opcodes[i].name == "BINPUT" or opcodes[i].name == "LONG_BINPUT":
@@ -268,16 +268,16 @@ class AttackInjector():
 
     def _increment_memo_args(self, start_index, last_memo_index, memo_offset, opcodes, args):
         """
-		Params: 
-			attack_index: Index we're starting our incrementation by
-			opcodes: Opcodes of each commmand
-			args: Arguments of each command
+        Params: 
+            attack_index: Index we're starting our incrementation by
+            opcodes: Opcodes of each commmand
+            args: Arguments of each command
 
-		Returns:
-			incremented_memo_record: Whether the memo recrod was incremented or not
-		
-		Gets the index of the last (LONG_)BINPUT command used up until the attack index
-		"""
+        Returns:
+            incremented_memo_record: Whether the memo recrod was incremented or not
+        
+        Gets the index of the last (LONG_)BINPUT command used up until the attack index
+        """
         # Increment the remaining memo records
         incremented_memo_record = False
         for i in range(start_index, len(opcodes)):
@@ -292,8 +292,8 @@ class AttackInjector():
     
     def _reconstruct_pickle(self, attack_index, end_index, uses_memo, last_memo_index, in_pickle, out_pickle, opcodes, args, pos):
         """
-		Reconstructs the end of a pickle file which has been modified.
-		"""
+        Reconstructs the end of a pickle file which has been modified.
+        """
         # Define where we attacked byte-wise
         attack_pos = pos[attack_index]
 
@@ -325,8 +325,8 @@ class AttackInjector():
 
     def _inject_attacks(self, attacks, attack_indices, attack_args, in_pickle, out_pickle):
         """
-		Injects a list of attacks into pickle file
-		"""
+        Injects a list of attacks into pickle file
+        """
         # First, extract every command from the pickle file
         opcodes, args, pos = self._get_all_commands(in_pickle)
 
