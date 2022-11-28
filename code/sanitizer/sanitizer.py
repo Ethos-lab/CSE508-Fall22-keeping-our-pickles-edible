@@ -168,7 +168,7 @@ class Sanitizer():
         Returns: 
             None
         
-        General steps in sanitisation:
+        General steps in sanitization:
             1.1. read pickle file
             1.2 Detect protocol and reuse of attack global calls
             1.3 Localize them using the code in Detector depending on the presence of nested attack or not.

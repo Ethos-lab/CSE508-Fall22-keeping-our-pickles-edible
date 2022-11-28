@@ -138,14 +138,17 @@ class Detector():
         current_pointer = file_data.tell()
         file_data.seek(0)
 
+        count_memoize = 0
         for info, arg, pos in genops(file_data):
 
             if pos < start_pos:
+                if info.name == 'MEMOIZE':
+                    count_memoize += 1
                 continue
 
             if info.name == 'MEMOIZE':
                 file_data.seek(current_pointer)
-                return {'info': info, 'pos': pos, 'arg': arg}
+                return {'info': info, 'pos': pos, 'arg': count_memoize}
 
         file_data.seek(current_pointer)
         return {'info': None, 'pos': 1000000000000, 'arg': 1000000000000}
@@ -762,8 +765,6 @@ class Detector():
         file_data.seek(current_pointer)
         return memo_get_calls_data
 
-
-
     def get_attack_data_proto4(self, data_bytearray, file_data, previous_pos=-1):
         """
         Params:
@@ -777,7 +778,7 @@ class Detector():
             list of [first_BINUNI_data, second_BINUNI_data, STACK_GLOBAL_data]. There can be
             multiple such lists in mal_opcode_data. 
           
-              All the opcodes data are a dict of {'info', 'arg', 'pos'}
+            All the opcodes data are a dict of {'info', 'arg', 'pos'}
         """
         possible_attack_flag = False
         attack_end_flag = False
@@ -830,7 +831,7 @@ class Detector():
                 nested_attack_stack.append([temp_list_data[0], reduce_data, temp_list_data[1]])
 
             elif info.name == 'MEMOIZE':
-                bef_attack_memo_arg = arg
+                bef_attack_memo_arg = self._find_next_memoize(file_data, pos - 1)
                 # If we have a complete attack(indicated by attack_end_flag) then check to store the first MEMOIZE after the attack
                 if attack_end_flag:
                     # First memoize after the attack is found
@@ -840,7 +841,7 @@ class Detector():
                         memo_dict = self._find_next_memoize(file_data, pos + 1)
                         aft_attack_memo_arg = memo_dict['arg']
                     else:
-                        aft_attack_memo_arg = arg
+                        aft_attack_memo_arg = self._find_next_memoize(file_data, pos - 1)
 
                     temp_list_data = nested_attack_stack.pop()
 
