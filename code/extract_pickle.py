@@ -139,16 +139,17 @@ class PickleEC():
     def read_pickle_to_bytearray(path_to_pickle_file):
         with open(path_to_pickle_file, 'rb') as f:
             data = io.BytesIO(f.read())
+            f.close()
         data_bytearray = bytearray(data.read())
         return data_bytearray
 
     @staticmethod
     def read_pickle_from_file_obj_to_bytearray(file_obj):
-        to_be_restored = file_obj.tell()
+        current_pointer = file_obj.tell()
         file_obj.seek(0)
         data = io.BytesIO(file_obj.read())
         data_bytearray = bytearray(data.read())
-        file_obj.seek(to_be_restored)
+        file_obj.seek(current_pointer)
         return data_bytearray
 
     @staticmethod
@@ -157,8 +158,13 @@ class PickleEC():
         return f
 
     @staticmethod
+    def close_fileobj(file_obj):
+        file_obj.close()
+
+    @staticmethod
     def write_pickle_from_bytearray(data_bytearray, path_to_pickle_file):
         if os.path.isfile(path_to_pickle_file):
             os.remove(path_to_pickle_file)
         with open(path_to_pickle_file, 'wb') as f:
             f.write(data_bytearray)
+            f.close()

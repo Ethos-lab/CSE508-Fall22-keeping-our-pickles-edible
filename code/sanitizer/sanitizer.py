@@ -249,6 +249,9 @@ class Sanitizer():
 
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
         # print(new_path_to_pickle_file)
+
+        self.pickle_ec.close_fileobj(pickle_file_object)
+
         self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
         new_pickle_file_object = self.pickle_ec.read_pickle(new_path_to_pickle_file)
         data_bytearray = self.change_memo_references(new_pickle_file_object, binput_arg_offset_ranges)
@@ -256,6 +259,7 @@ class Sanitizer():
         # step 3    
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
         self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
+
         return
 
     def sanitize_bin(self, dir_name, binname):
