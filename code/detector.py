@@ -167,11 +167,11 @@ class Detector():
 
     def get_global_reuse_data(self, file_data, proto=2):
         if proto < 4:
-            return self._global_reuse_data(file_data)
+            return self._global_reuse_data_proto2(file_data)
         else:
             return self._global_reuse_data_proto4(file_data)
 
-    def _global_reuse_data(self, file_data):
+    def _global_reuse_data_proto2(self, file_data):
         """
         Params:
             file_data: The file object of the current pickle file
@@ -291,7 +291,8 @@ class Detector():
         file_data.seek(0)
 
         global_nested_stack = []
-        # global_nested_stack will contain data as soon as a global call in encountered, this will help to check if nested attacks exists
+        # global_nested_stack will contain data as soon as a global call in encountered,
+        # this will help to check if nested attacks exists
 
         for info, arg, pos in genops(file_data):
 
@@ -651,8 +652,10 @@ class Detector():
             previous_pos: a cursor to check if the opcode has been processed or not.
 
         Returns:
-            mal_opcode_data: A list of places where malicious global calls were found. The global opcode (info, arg, pos), reduce opcode (info, arg, pos),
-            and the memo ids used before and after the attack the elements of each list. There are multiple such lists in mal_opcode_data.
+            mal_opcode_data: A list of places where malicious global calls were found.
+                            The global opcode (info, arg, pos), reduce opcode (info, arg, pos),
+                            and the memo ids used before and after the attack the elements of each list.
+                            There are multiple such lists in mal_opcode_data.
 
         """
         global_flag = False
@@ -936,7 +939,7 @@ class Detector():
                 nested_attack_stack.append([temp_list_data[0], reduce_data, temp_list_data[1]])
 
             elif info.name == 'MEMOIZE':
-                bef_attack_memo_arg = self._find_next_memoize(file_data, pos - 1)
+                bef_attack_memo_arg = self._find_next_memoize(file_data, pos - 1)['arg']
                 # If we have a complete attack(indicated by attack_end_flag) then check to store the first MEMOIZE after the attack
                 if attack_end_flag:
                     # First memoize after the attack is found
@@ -946,7 +949,7 @@ class Detector():
                         memo_dict = self._find_next_memoize(file_data, pos + 1)
                         aft_attack_memo_arg = memo_dict['arg']
                     else:
-                        aft_attack_memo_arg = self._find_next_memoize(file_data, pos - 1)
+                        aft_attack_memo_arg = self._find_next_memoize(file_data, pos - 1)['arg']
 
                     temp_list_data = nested_attack_stack.pop()
 

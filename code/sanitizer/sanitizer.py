@@ -158,6 +158,150 @@ class Sanitizer():
                 pos_offset += 5
         return data_bytearray, pos_offset
 
+    @staticmethod
+    def remove_memoize(data_bytearray, start_pos, pos_offset):
+        """
+        Params:
+        data_bytearray: input bytearray which needs removal of binput/long_binput after the global-to-reduce
+        part of attack has already been removed.
+        start_pos: the index where the binput will be present, since the global-to-reduce part has already been removed.
+        pos_offset: the current byte position offset between the data_bytearray and the unchanged pickle file.
+
+        Returns:
+            data_bytearray: after removing binput/long_binput only if a pop is called after this binput/long_binput.
+            pos_offset: updated offset due to deletions in the data_bytearray.
+        """
+        if data_bytearray[start_pos:start_pos + 1] == bytearray(b'\x94'):  # binput
+            if data_bytearray[start_pos + 2:start_pos + 3] == bytearray(b'0'):
+                del data_bytearray[start_pos:start_pos + 2]
+                pos_offset += 2
+        return data_bytearray, pos_offset
+
+    def delete_and_rectify(self, dir_name, new_pickle_name, data_bytearray, file_obj, mal_opcode_data, proto=2):
+        if proto < 4:
+            return self._delete_and_rectify_proto2(dir_name, new_pickle_name, data_bytearray, file_obj, mal_opcode_data)
+        else:
+            return self._delete_and_rectify_proto4(dir_name, new_pickle_name, data_bytearray, file_obj, mal_opcode_data)
+
+    def _delete_and_rectify_proto2(self, dir_name, new_pickle_name, data_bytearray, file_obj, mal_opcode_data):
+
+        sanitizer_pos_offset = 0  # needed coz deletions will happen
+        sanitizer_memo_offset = 0  # needed coz binput args will get changed
+
+        next_attack_bef_binput_arg = 0  # will be used to set scope in change_memo_indexes
+        prev_attack_aft_binput_arg = 0  # will be used to set offset ranges for binput args
+
+        binput_arg_offset_ranges = []
+        for id, val in enumerate(mal_opcode_data):
+
+            global_data = val[0]
+            reduce_data = val[1]
+            bef_attack_binput_arg = val[2]
+            aft_attack_binput_arg = val[3]
+
+            if id == len(mal_opcode_data) - 1:
+                next_attack_bef_binput_arg = 1000000000000
+            else:
+                next_attack_bef_binput_arg = mal_opcode_data[id + 1][2]
+
+            start_byte = global_data['pos'] - sanitizer_pos_offset
+            end_byte = reduce_data['pos'] - sanitizer_pos_offset
+            sanitizer_pos_offset += (end_byte - start_byte)
+            data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
+            data_bytearray, sanitizer_pos_offset = self.remove_binput(data_bytearray,
+                                                                      start_byte, sanitizer_pos_offset)
+
+            data_bytearray = self.write_bytes(data_bytearray, start_byte, bytearray(b'}'))
+
+            binput_arg_offset_ranges.append((prev_attack_aft_binput_arg,
+                                             bef_attack_binput_arg, sanitizer_memo_offset))
+            if aft_attack_binput_arg != 1000000000000:
+                if bef_attack_binput_arg == 0:
+                    sanitizer_memo_offset += (aft_attack_binput_arg - bef_attack_binput_arg)
+                else:
+                    sanitizer_memo_offset += (aft_attack_binput_arg - bef_attack_binput_arg - 1)
+                data_bytearray, sanitizer_pos_offset = self.change_memo_indexes(data_bytearray, file_obj,
+                                                                                aft_attack_binput_arg,
+                                                                                next_attack_bef_binput_arg,
+                                                                                sanitizer_memo_offset,
+                                                                                sanitizer_pos_offset)
+                prev_attack_aft_binput_arg = aft_attack_binput_arg
+
+        binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
+
+        new_path_to_pickle_file = join(dir_name, new_pickle_name)
+        # print(new_path_to_pickle_file)
+
+        self.pickle_ec.close_fileobj(file_obj)
+
+        self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
+        new_pickle_file_object = self.pickle_ec.read_pickle(new_path_to_pickle_file)
+        data_bytearray = self.change_memo_references(new_pickle_file_object, binput_arg_offset_ranges)
+
+        return data_bytearray
+
+    def _delete_and_rectify_proto4(self, dir_name, new_pickle_name, data_bytearray, file_obj, mal_opcode_data):
+        """
+        Params:
+            ...
+            mal_opcode_data: A list containing the information about all the attack calls. The data in the
+            list will be in the following format:
+            [sub_list, REDUCE_data, bef_attack_memo_arg, after_attack_memo_arg] and the sub_list will be a
+            list of [first_BINUNI_data, second_BINUNI_data, STACK_GLOBAL_data]. There can be
+            multiple such lists in mal_opcode_data.
+
+            All the opcodes data are a dict of {'info', 'arg', 'pos'}
+        """
+        sanitizer_pos_offset = 0  # needed coz deletions will happen
+        sanitizer_memo_offset = 0  # needed coz binput args will get changed
+
+        next_attack_bef_binput_arg = 0  # will be used to set scope in change_memo_indexes
+        prev_attack_aft_binput_arg = 0  # will be used to set offset ranges for binput args
+
+        binput_arg_offset_ranges = []
+        for id, val in enumerate(mal_opcode_data):
+
+            stack_global_data = val[0]
+            reduce_data = val[1]
+            bef_attack_binput_arg = val[2]
+            aft_attack_binput_arg = val[3]
+
+            if id == len(mal_opcode_data) - 1:
+                next_attack_bef_binput_arg = 1000000000000
+            else:
+                next_attack_bef_binput_arg = mal_opcode_data[id + 1][2]
+
+            start_byte = stack_global_data[0]['pos'] - sanitizer_pos_offset
+            end_byte = reduce_data['pos'] - sanitizer_pos_offset
+            sanitizer_pos_offset += (end_byte - start_byte)
+            data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
+            data_bytearray, sanitizer_pos_offset = self.remove_memoize(data_bytearray,
+                                                                      start_byte, sanitizer_pos_offset)
+
+            data_bytearray = self.write_bytes(data_bytearray, start_byte, bytearray(b'}'))
+
+            binput_arg_offset_ranges.append((prev_attack_aft_binput_arg,
+                                             bef_attack_binput_arg, sanitizer_memo_offset))
+            if aft_attack_binput_arg != 1000000000000:
+                if bef_attack_binput_arg == 0:
+                    sanitizer_memo_offset += (aft_attack_binput_arg - bef_attack_binput_arg)
+                else:
+                    sanitizer_memo_offset += (aft_attack_binput_arg - bef_attack_binput_arg - 1)
+                prev_attack_aft_binput_arg = aft_attack_binput_arg
+
+        binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
+
+        new_path_to_pickle_file = join(dir_name, new_pickle_name)
+        # print(new_path_to_pickle_file)
+
+        self.pickle_ec.close_fileobj(file_obj)
+
+        self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
+        new_pickle_file_object = self.pickle_ec.read_pickle(new_path_to_pickle_file)
+        data_bytearray = self.change_memo_references(new_pickle_file_object, binput_arg_offset_ranges)
+
+        return data_bytearray
+
     def sanitize_pickle(self, dir_name, pickle_name, new_pickle_name):
         """
         Params:
@@ -204,57 +348,8 @@ class Sanitizer():
         # binput arg and prev binput arg.
 
         # step 2
-
-        sanitizer_pos_offset = 0  # needed coz deletions will happen
-        sanitizer_memo_offset = 0  # needed coz binput args will get changed
-
-        next_attack_bef_binput_arg = 0  # will be used to set scope in change_memo_indexes
-        prev_attack_aft_binput_arg = 0  # will be used to set offset ranges for binput args
-
-        binput_arg_offset_ranges = []
-        for id, val in enumerate(mal_opcode_data):
-
-            global_data = val[0]
-            reduce_data = val[1]
-            bef_attack_binput_arg = val[2]
-            aft_attack_binput_arg = val[3]
-
-            if id == len(mal_opcode_data) - 1:
-                next_attack_bef_binput_arg = 1000000000000
-            else:
-                next_attack_bef_binput_arg = mal_opcode_data[id + 1][2]
-
-            start_byte = global_data['pos'] - sanitizer_pos_offset
-            end_byte = reduce_data['pos'] - sanitizer_pos_offset
-            sanitizer_pos_offset += (end_byte - start_byte)
-            data_bytearray = self.delete_bytes(data_bytearray, start_byte, end_byte)
-            data_bytearray, sanitizer_pos_offset = self.remove_binput(data_bytearray, start_byte, sanitizer_pos_offset)
-
-            data_bytearray = self.write_bytes(data_bytearray, start_byte, bytearray(b'}'))
-
-            binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, bef_attack_binput_arg, sanitizer_memo_offset))
-            if aft_attack_binput_arg != 1000000000000:
-                if bef_attack_binput_arg == 0:
-                    sanitizer_memo_offset += (aft_attack_binput_arg - bef_attack_binput_arg)
-                else:
-                    sanitizer_memo_offset += (aft_attack_binput_arg - bef_attack_binput_arg - 1)
-                data_bytearray, sanitizer_pos_offset = self.change_memo_indexes(data_bytearray, pickle_file_object,
-                                                                                aft_attack_binput_arg,
-                                                                                next_attack_bef_binput_arg,
-                                                                                sanitizer_memo_offset,
-                                                                                sanitizer_pos_offset)
-                prev_attack_aft_binput_arg = aft_attack_binput_arg
-
-        binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
-
-        new_path_to_pickle_file = join(dir_name, new_pickle_name)
-        # print(new_path_to_pickle_file)
-
-        self.pickle_ec.close_fileobj(pickle_file_object)
-
-        self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
-        new_pickle_file_object = self.pickle_ec.read_pickle(new_path_to_pickle_file)
-        data_bytearray = self.change_memo_references(new_pickle_file_object, binput_arg_offset_ranges)
+        data_bytearray = self.delete_and_rectify(dir_name, new_pickle_name, data_bytearray,
+                                                 pickle_file_object, mal_opcode_data, proto=proto)
 
         # step 3    
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
