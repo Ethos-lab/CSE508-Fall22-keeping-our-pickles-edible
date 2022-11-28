@@ -83,13 +83,14 @@ class Detector():
 		file_data.seek(current_position)
 		return {'info': None, 'pos': 1000000000000, 'arg': 1000000000000}
 
-	def global_reuse_calls(self, file_data):
+	def global_reuse_calls_and_protocol(self, file_data):
 		"""
 		Params:
 			file_data: The file object of the current pickle file
 
 		Returns:
-			Dict containing the indices as key and global opcode data as value
+			Dict containing the indices as key and global opcode data as value and
+			The protocol version number
 
 		This function check for the possible global reuse attacks and stores the BINGET(those reuse calls)
 		with the appropriate global calls along with its argument.
@@ -102,6 +103,8 @@ class Detector():
 		current_pointer = file_data.tell()
 		file_data.seek(0)
   
+		protocol = 0
+		# To store the protocol version mentioned in the pickle file
 		global_reuse_dict = dict()
 		# To store the memo index and the global data at that particular index, in order to check for global reuse attack
   
@@ -122,17 +125,20 @@ class Detector():
 				global_reuse_dict[arg] = global_data
 
 			else:
+				if info.name == 'PROTO':
+					protocol = arg
 				# If anything other than BINPUT is encountered then reset the flag
 				global_reuse_flag = False
   
 		file_data.seek(current_pointer)
   
-		return global_reuse_dict
+		return global_reuse_dict, protocol
 
 	def exists_nested_attack(self, file_data, global_reuse_dict, previous_pos = -1):
 		"""
   		Params:
 			file_data: The file object of the current pickle file
+			global_reuse_dict: To look for BINGETS reusing malicious GLOBAL calls
 			previous_pos(int, optional): Defaults to -1. A pointer to check for the required opcodes after it.
 
 		Returns:
@@ -185,13 +191,14 @@ class Detector():
 	def get_neseted_attack_data(self, data_bytearray, file_data, global_reuse_dict):
 		"""
 		Params:
+			data_bytearray: To check for the POP after REDUCE opcode
 			file_data: A file object for the pickle file
 			global_reuse_dict: A dictionary containing the binget arguments where global calls are being reused
 		
 		Returns:
 			nested_mal_opcode_data: A list containing the information about the nested attack calls. 
    			The global opcode (info, arg, pos), reduce opcode (info, arg, pos), and the memo ids
-      		used beforeand after the attack the elements of each list. There are multiple such lists
+      		used beforeand after the attack the elements of each list. There can be multiple such lists
         	in nested_mal_opcode_data. 
 		  
 		"""
@@ -274,7 +281,9 @@ class Detector():
 	def get_global_reduce_data(self, data_bytearray, file_data, global_reuse_dict, previous_pos = -1):
 		"""
 		Params:
+			data_bytearray: To check for the POP after REDUCE opcode
 			file_data: a file object for the pickle file
+			global_reuse_dict: To look for BINGETS reusing malicious GLOBAL calls
 			previous_pos: a cursor to check if the opcode has been processed or not. 
 		
 		Returns:
@@ -373,8 +382,8 @@ class Detector():
 		# file_data.seek(current_pointer)
 		return memo_get_calls_data
 
-	# Initial Implementation
-	def exists_attack_proto4(self, data_bytearray, file_data, previous_pos = -1):
+
+	def exists_attack_proto4(self, file_data, previous_pos = -1):
 		"""
 		Params:
 			file_data: A file object for the pickle file
@@ -384,9 +393,12 @@ class Detector():
 		  
 		"""
 		possible_attack_flag = False
+
 		second_prev_binuni_data = {}
 		first_prev_binuni_data = {}
-  
+
+		current_pointer = file_data.tell()
+		file_data.seek(0)
   
 		for info, arg, pos in genops(file_data):
 
@@ -397,6 +409,7 @@ class Detector():
 			if info.name == 'BINUNICODE' or info.name == 'SHORT_BINUNICODE':
 				second_prev_binuni_data = first_prev_binuni_data
 				first_prev_binuni_data = {'info':info, 'arg': arg, 'pos':pos}
+
 				# Both are non-empty indicates a possible STACK_GLOBAL call, malicious code
 				if len(second_prev_binuni_data) > 0 and len(first_prev_binuni_data) > 0:
 					possible_attack_flag = True
@@ -405,24 +418,32 @@ class Detector():
 			elif info.name == 'STACK_GLOBAL' and possible_attack_flag:
 				combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
 				combined_arg = combined_arg.replace(' ', '.')
+
 				# Check if combined_arg is in whitelist or not to confirm about the attack
 				if combined_arg not in self._ALLOWLIST:
+					file_data.seek(current_pointer)
 					return True
+				else:
+					possible_attack_flag = False
 
+		file_data.seek(current_pointer)
 		return False
 
-	# Initial Implementation
+
 	def get_attack_data_proto4(self, data_bytearray, file_data, previous_pos = -1):
 		"""
 		Params:
 			file_data: A file object for the pickle file
+			data_bytearray: To check for the POP after REDUCE opcode
 		
 		Returns:
-			mal_opcode_data: A list containing the information about all the attack calls. 
-   			The binunicode, stack global opcode (info, arg, pos), reduce opcode (info, arg, pos), and the memo ids
-      		used beforeand after the attack the elements of each list. There can be multiple such lists
-        	in mal_opcode_data. 
+			mal_opcode_data: A list containing the information about all the attack calls. The data in the
+			list will be in the following format:
+			[sub_list, REDUCE_data, bef_attack_memo_arg, after_attack_memo_arg] and the sub_list will be a
+			list of [first_BINUNI_data, second_BINUNI_data, STACK_GLOBAL_data]. There can be
+			multiple such lists in mal_opcode_data. 
 		  
+		  	All the opcodes data are a dict of {'info', 'arg', 'pos'}
 		"""
 		possible_attack_flag = False
 		attack_end_flag = False
@@ -430,12 +451,13 @@ class Detector():
 		second_prev_binuni_data = {}
 		first_prev_binuni_data = {}
   
+		bef_attack_memo_arg = None
 		mal_opcode_data=[]
 		# Final list containing the data about the nested attack 
 		global_nested_stack = []
-		# Global_nested_stack will contain the stack_global opcode data and bef_attack_memo
+		# Global_nested_stack will contain the sub_list opcode data and bef_attack_memo
 		nested_attack_stack = []
-		# Nested_attack_stack will contain the stack_global, reduce data and bef_attack_memo
+		# Nested_attack_stack will contain the sub_list, reduce data and bef_attack_memo
   
   
 		for info, arg, pos in genops(file_data):
@@ -452,13 +474,17 @@ class Detector():
 			elif info.name == 'STACK_GLOBAL' and possible_attack_flag:
 				combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
 				combined_arg = combined_arg.replace(' ', '.')
+
 				if combined_arg not in self._ALLOWLIST:
-					print(combined_arg)
-					global_nested_stack.append(combined_arg)
-					possible_attack_flag = False
+					stack_global_data = {'info':info, 'arg': arg, 'pos':pos}
+					# Create a list containing first and second BINUNI calls and current STACK GLOBAL data
+					temp_list_data = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
+					global_nested_stack.append([temp_list_data, bef_attack_memo_arg])
 					# Reset the first prev and second prev binuni data dicts
 					second_prev_binuni_data = {}
 					first_prev_binuni_data = {}
+
+				possible_attack_flag = False
 
 			elif len(global_nested_stack) >= 1 and info.name == 'REDUCE':
 				reduce_data = {"info": info, "arg": arg, "pos": pos}
@@ -468,25 +494,25 @@ class Detector():
 				nested_attack_stack.append([temp_list_data[0], reduce_data, temp_list_data[1]])
 
 			elif info.name == 'MEMOIZE':
-				bef_attack_binput_arg = arg
-				aft_attack_memo_arg = arg
+				bef_attack_memo_arg = arg
 				# If we have a complete attack(indicated by attack_end_flag) then check to store the first MEMOIZE after the attack
 				if attack_end_flag:
 					# First memoize after the attack is found
+
 					# Use data_bytearray to detect pop and memoize
 					if data_bytearray[pos+1:pos+2]==bytearray(b'0'):
-							memo_dict=self.find_next_memoize(file_data, pos+1)
-							aft_attack_memo_arg = memo_dict['arg']
-							# print(memo_dict['info'])
-       
+						memo_dict=self.find_next_memoize(file_data, pos+1)
+						aft_attack_memo_arg = memo_dict['arg']
 					else:
-							aft_attack_memo_arg = arg
+						aft_attack_memo_arg = arg
 
-					# temp_list_data = nested_attack_stack.pop()
-					# # print([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_memo_arg])
-					# if len(global_nested_stack) == 0:
-					# 	# No further nesting inside this attack, so push it into the mal_opcode_data
-					# 	mal_opcode_data.append([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_memo_arg])
+					temp_list_data = nested_attack_stack.pop()
+
+					# print([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_memo_arg])
+					if len(global_nested_stack) == 0:
+						# No further nesting inside this attack, so push it into the mal_opcode_data
+						mal_opcode_data.append([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_memo_arg])
+
 					attack_end_flag = False
 
 		return mal_opcode_data
