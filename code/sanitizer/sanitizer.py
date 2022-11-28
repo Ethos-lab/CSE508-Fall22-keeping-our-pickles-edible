@@ -169,7 +169,9 @@ class Sanitizer():
             None
         
         General steps in sanitisation:
-            1. read pickle file and detect malicious opcodes, localize them using the code in Detector
+            1.1. read pickle file
+            1.2 Detect protocol and reuse of attack global calls
+            1.3 Localize them using the code in Detector depending on the presence of nested attack or not.
             2.1. use the above localization information to delete the relevant opcodes and replace with empty dictionary
              if necessary
             2.2. Make sure that the memo indexes in the BINPUT/LONG_BINPUT opcodes are rectified according to offset. 
@@ -179,23 +181,27 @@ class Sanitizer():
         
         """
         
-        # step 1
+        # step 1.1
         path_to_pickle_file = join(dir_name, pickle_name)
         pickle_file_object = self.pickle_ec.read_pickle(path_to_pickle_file)
         data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
-        
-        global_reuse_dict = dict()
-        global_reuse_dict, proto = self.detector.global_reuse_calls_and_protocol(pickle_file_object)
-        
-        # detected parts with malicious code that needs to be removed.
 
-        if self.detector.exists_nested_attack(pickle_file_object, global_reuse_dict):
-            mal_opcode_data = self.detector.get_nested_attack_data(data_bytearray, pickle_file_object, global_reuse_dict)
+        # step 1.2
+        proto = self.detector.get_protocol(pickle_file_object)
+
+        global_reuse_dict = self.detector.get_global_reuse_data(pickle_file_object, proto=proto)
+
+        # step 1.3: detected parts with malicious code that needs to be removed.
+
+        if self.detector.exists_nested_attack(pickle_file_object, global_reuse_dict, proto=proto):
+            mal_opcode_data = self.detector.get_nested_attack_data(data_bytearray, pickle_file_object,
+                                                                   global_reuse_dict, proto=proto)
         else:
-            mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object, global_reuse_dict)
-        # print(mal_opcode_data)
-        
-        # contains global opcode info, reduce opcode info, info about next binput arg and prev binput arg.
+            mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object,
+                                                                   global_reuse_dict, proto=proto)
+
+        # mal_opcode_data: contains global opcode info, reduce opcode info, info about next
+        # binput arg and prev binput arg.
 
         # step 2
 
@@ -241,7 +247,6 @@ class Sanitizer():
 
         binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
 
-        # TODO: uncomment when alfredo corrects his attack
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
         # print(new_path_to_pickle_file)
         self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
