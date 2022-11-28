@@ -138,6 +138,51 @@ class Detector():
 
         return global_reuse_dict, protocol
 
+    def global_reuse_data_proto4(self, file_data):
+        possible_global_flag = False
+        global_reuse_flag = False
+
+        global_reuse_dict = {}
+
+        second_prev_binuni_data = {}
+        first_prev_binuni_data = {}
+
+        current_pointer = file_data.tell()
+        file_data.seek(0)
+
+        for info, arg, pos in genops(file_data):
+
+            # Every STACK_GLOBAL requires it to be preceded by 2 BINUNICODE or SHORT_BINUNICODE opcodes
+            if info.name == 'BINUNICODE' or info.name == 'SHORT_BINUNICODE':
+                second_prev_binuni_data = first_prev_binuni_data
+                first_prev_binuni_data = {'info': info, 'arg': arg, 'pos': pos}
+
+                # Both are non-empty indicates a possible STACK_GLOBAL call, malicious code
+                if len(second_prev_binuni_data) > 0 and len(first_prev_binuni_data) > 0:
+                    possible_global_flag = True
+
+            elif info.name == 'STACK_GLOBAL' and possible_global_flag:
+                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = combined_arg.replace(' ', '.')
+
+                # Check if combined_arg is in whitelist or not to confirm about the attack
+                if combined_arg not in self._ALLOWLIST:
+                    global_reuse_flag = True
+                    global_data = {'info': info, 'arg': combined_arg}
+                else:
+                    possible_global_flag = False
+            elif global_reuse_flag and (info.name=='MEMOIZE' or info.name=='BINPUT' or info.name=='LONG_BINPUT'):
+                global_reuse_flag = False
+                # The next opcode is indeed BINPUT and store the global data at that particular argument index,
+                # in order to check for global reuse attack
+                global_reuse_dict[arg] = global_data
+            else:
+                # If anything other than BINPUT is encountered then reset the flag
+                global_reuse_flag = False
+
+        file_data.seek(current_pointer)
+        return global_reuse_dict
+
     def exists_nested_attack(self, file_data, global_reuse_dict, previous_pos=-1):
         """
           Params:
