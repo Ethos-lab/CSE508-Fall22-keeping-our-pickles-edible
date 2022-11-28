@@ -722,8 +722,13 @@ class Detector():
             previous_pos: a cursor to check if the opcode has been processed or not.
 
         Returns:
-            mal_opcode_data: A list of places where malicious global calls were found. The global opcode (info, arg, pos), reduce opcode (info, arg, pos),
-            and the memo ids used before and after the attack the elements of each list. There are multiple such lists in mal_opcode_data.
+            mal_opcode_data: A list containing the information about all the attack calls. The data in the
+            list will be in the following format:
+            [sub_list, REDUCE_data, bef_attack_memo_arg, after_attack_memo_arg] and the sub_list will be a
+            list of [first_BINUNI_data, second_BINUNI_data, STACK_GLOBAL_data]. There can be
+            multiple such lists in mal_opcode_data.
+
+            All the opcodes data are a dict of {'info', 'arg', 'pos'}
 
         """
         current_pointer = file_data.tell()
@@ -741,7 +746,7 @@ class Detector():
         
         mal_opcode_data = []
         # Final list containing the data about the attacks
-        stack_global_data = {}
+        temp_sub_list = []
         # Will contain the malicious stack_global opcode data
         reduce_data = {}
         # Will contain the reduce opcode data
@@ -764,6 +769,8 @@ class Detector():
 
                 if combined_arg not in self._ALLOWLIST:
                     stack_global_data = {'info': info, 'arg': arg, 'pos': pos}
+                    sub_list = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
+                    temp_sub_list = [sub_list, bef_attack_memo_arg]
                     global_flag = True
                     
                     # Reset the first prev and second prev binuni data dicts
@@ -779,6 +786,8 @@ class Detector():
                 if combined_arg not in self._ALLOWLIST:
                     global_reuse_data = global_reuse_dict[arg]
                     stack_global_data = {'info': global_reuse_data['info'], 'arg': global_reuse_data['arg'], 'pos': pos}
+                    sub_list = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
+                    temp_sub_list = [sub_list, bef_attack_memo_arg]
                     global_flag = True
                     
                     # Reset the first prev and second prev binuni data dicts
@@ -805,7 +814,7 @@ class Detector():
                         aft_attack_memo_arg = memoize_dict['arg']
 
                     # Push data into the mal_opcode_data
-                    mal_opcode_data.append([stack_global_data, reduce_data, bef_attack_memo_arg, aft_attack_memo_arg])
+                    mal_opcode_data.append([temp_sub_list[0], reduce_data, temp_sub_list[1], aft_attack_memo_arg])
                     # Reset the flags
                     reduce_flag = False
                     global_flag = False
