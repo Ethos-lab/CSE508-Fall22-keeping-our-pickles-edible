@@ -262,7 +262,7 @@ class Sanitizer():
         data_bytearray = self.pickle_ec.read_pickle_to_bytearray(path_to_pickle_file)
         
         global_reuse_dict = dict()
-        global_reuse_dict = self.detector.global_reuse_calls(pickle_file_object)
+        global_reuse_dict, protocol = self.detector.global_reuse_calls_and_protocol(pickle_file_object)
         
         # detected parts with malicious code that needs to be removed.
 
