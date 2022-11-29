@@ -46,7 +46,6 @@ class Detector():
             else:
                 return proto4_dict
 
-
     def _exists_attack_proto2(self, file_data):
         """
         Params:
