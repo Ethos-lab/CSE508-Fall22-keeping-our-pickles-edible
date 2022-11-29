@@ -134,6 +134,26 @@ class Detector():
         file_data.seek(current_pointer)
         return {'info': None, 'pos': 1000000000000, 'arg': 1000000000000}
 
+    def _find_previous_memoize(self, file_data, end_pos):
+        
+        current_pointer = file_data.tell()
+        file_data.seek(0)
+
+        memoize_counter = 0
+        memoize_data_dict = {'info': None, 'pos': 0, 'arg': 0}
+        
+        for info, arg, pos in genops(file_data):
+
+            if pos > end_pos:
+                break
+
+            if info.name == 'MEMOIZE':
+                memoize_data_dict = {'info': info, 'arg': memoize_counter, 'pos': pos}
+                memoize_counter += 1
+                
+        file_data.seek(current_pointer)
+        return memoize_data_dict
+
     def _find_next_memoize(self, file_data, start_pos):
         current_pointer = file_data.tell()
         file_data.seek(0)
@@ -545,7 +565,9 @@ class Detector():
         second_prev_binuni_data = {}
         first_prev_binuni_data = {}
 
+        aft_attack_memo_arg = 0
         bef_attack_memo_arg = 0
+
         nested_mal_opcode_data = []
         # Final list containing the data about the nested attack
         global_nested_stack = []
@@ -574,7 +596,8 @@ class Detector():
                     
                     # Create a list containing first and second BINUNI calls and current STACK GLOBAL data
                     temp_list_data = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
-                    global_nested_stack.append([temp_list_data, bef_attack_memo_arg])
+                    bef_attack_memo_arg = self._find_previous_memoize(file_data, second_prev_binuni_data['pos'])
+                    global_nested_stack.append([temp_list_data, bef_attack_memo_arg['arg']])
                     
                     # Reset the first prev and second prev binuni data dicts
                     second_prev_binuni_data = {}
@@ -592,7 +615,8 @@ class Detector():
                     
                     # Create a list containing first and second BINUNI calls and current STACK GLOBAL data
                     temp_list_data = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
-                    global_nested_stack.append([temp_list_data, bef_attack_memo_arg])
+                    bef_attack_memo_arg = self._find_previous_memoize(file_data, second_prev_binuni_data['pos'])
+                    global_nested_stack.append([temp_list_data, bef_attack_memo_arg['arg']])
                     
                     # Reset the first prev and second prev binuni data dicts
                     second_prev_binuni_data = {}
@@ -609,28 +633,27 @@ class Detector():
                 # Attack is complete so remove from global stack and append to nested_attack_stack to wait for BINPUT after the attack
                 nested_attack_stack.append([temp_list_data[0], reduce_data, temp_list_data[1]])
 
-            elif info.name == 'MEMOIZE':
-                memoize_dict = self._find_next_memoize(file_data, pos)
+            elif info.name == 'MEMOIZE' and attack_end_flag:
                 # If we have a complete attack(indicated by attack_end_flag) then check to store the first MEMOIZE after the attack
-                if attack_end_flag:
-                    # First memoize after the attack is found
+                # First memoize after the attack is found
 
-                    # Use data_bytearray to detect pop and memoize
-                    if data_bytearray[pos+1:pos+2] == bytearray(b'0'):
-                        memo_dict = self._find_next_memoize(file_data, pos+1)
-                        aft_attack_memo_arg = memo_dict['arg']
-                    else:
-                        aft_attack_memo_arg = memoize_dict['arg']
+                # Use data_bytearray to detect pop and memoize
+                if data_bytearray[pos+1:pos+2] == bytearray(b'0'):
+                    memo_dict = self._find_next_memoize(file_data, pos+1)
+                    aft_attack_memo_arg = memo_dict['arg']
 
-                    temp_list_data = nested_attack_stack.pop()
+                else:
+                    memoize_dict = self._find_next_memoize(file_data, pos)
+                    aft_attack_memo_arg = memoize_dict['arg']
 
-                    # print([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_memo_arg])
-                    if len(global_nested_stack) == 0:
-                        # No further nesting inside this attack, so push it into the mal_opcode_data
-                        nested_mal_opcode_data.append([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_memo_arg])
+                temp_list_data = nested_attack_stack.pop()
 
-                    attack_end_flag = False
-                bef_attack_memo_arg = memoize_dict['arg']
+                # print([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_memo_arg])
+                if len(global_nested_stack) == 0:
+                    # No further nesting inside this attack, so push it into the mal_opcode_data
+                    nested_mal_opcode_data.append([temp_list_data[0], temp_list_data[1], temp_list_data[2], aft_attack_memo_arg])
+
+                attack_end_flag = False
 
         file_data.seek(current_pointer)
         
@@ -773,7 +796,8 @@ class Detector():
                 if combined_arg not in self._ALLOWLIST:
                     stack_global_data = {'info': info, 'arg': arg, 'pos': pos}
                     sub_list = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
-                    temp_sub_list = [sub_list, bef_attack_memo_arg]
+                    bef_attack_memo_arg = self._find_previous_memoize(file_data, second_prev_binuni_data['pos'])
+                    temp_sub_list = [sub_list, bef_attack_memo_arg['arg']]
                     global_flag = True
                     
                     # Reset the first prev and second prev binuni data dicts
@@ -790,7 +814,8 @@ class Detector():
                     global_reuse_data = global_reuse_dict[arg]
                     stack_global_data = {'info': global_reuse_data['info'], 'arg': global_reuse_data['arg'], 'pos': pos}
                     sub_list = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
-                    temp_sub_list = [sub_list, bef_attack_memo_arg]
+                    bef_attack_memo_arg = self._find_previous_memoize(file_data, second_prev_binuni_data['pos'])
+                    temp_sub_list = [sub_list, bef_attack_memo_arg['arg']]
                     global_flag = True
                     
                     # Reset the first prev and second prev binuni data dicts
@@ -803,25 +828,25 @@ class Detector():
                 reduce_data = {"info": info, "arg": arg, "pos": pos}
                 reduce_flag = True
 
-            elif info.name == 'MEMOIZE':
-                memoize_dict = self._find_next_memoize(file_data, pos)
+            elif info.name == 'MEMOIZE' and reduce_flag:
                 # If we have a complete attack(indicated by reduce_flag) then check to store the first MEMOIZE after the attack
-                if reduce_flag:
-                    # First memoize after the attack is found
+                # First memoize after the attack is found
 
-                    # Use data_bytearray to detect pop and memoize
-                    if data_bytearray[pos+1:pos+2] == bytearray(b'0'):
-                        memo_dict = self._find_next_memoize(file_data, pos+1)
-                        aft_attack_memo_arg = memo_dict['arg']
-                    else:
-                        aft_attack_memo_arg = memoize_dict['arg']
+                # Use data_bytearray to detect pop and memoize
+                if data_bytearray[pos+1:pos+2] == bytearray(b'0'):
+                    memo_dict = self._find_next_memoize(file_data, pos+1)
+                    aft_attack_memo_arg = memo_dict['arg']
+                    
+                else:
+                    memoize_dict = self._find_next_memoize(file_data, pos)
+                    aft_attack_memo_arg = memoize_dict['arg']
 
-                    # Push data into the mal_opcode_data
-                    mal_opcode_data.append([temp_sub_list[0], reduce_data, temp_sub_list[1], aft_attack_memo_arg])
-                    # Reset the flags
-                    reduce_flag = False
-                    global_flag = False
-                bef_attack_memo_arg = memoize_dict['arg']
+                # Push data into the mal_opcode_data
+                mal_opcode_data.append([temp_sub_list[0], reduce_data, temp_sub_list[1], aft_attack_memo_arg])
+                
+                # Reset the flags
+                reduce_flag = False
+                global_flag = False
 
         file_data.seek(current_pointer)
         
