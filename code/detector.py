@@ -33,7 +33,7 @@ class Detector():
 
         Just prints if the file seems to be safe or unsafe.
         """
-        proto = self.get_protocol(self, file_data)
+        proto = self.get_protocol(file_data)
         if proto < 4:
             return self._exists_attack_proto2(file_data)
         else:
@@ -181,7 +181,8 @@ class Detector():
         file_data.seek(current_pointer)
         return {'info': None, 'pos': 1000000000000, 'arg': 1000000000000}
 
-    def get_protocol(self, file_data):
+    @staticmethod
+    def get_protocol(file_data):
         protocol = 0
 
         current_pointer = file_data.tell()
@@ -999,12 +1000,14 @@ class Detector():
 
 
 if __name__ == "__main__":
-    print('Input file path')
+    print('./untrusted_picklefiles/skops-yu3ifopn-infected.pkl')
     config_path = 'config_files'
     allowlist_file = 'allowlist.config'
     safeclass_file = 'safeclasses.config'
 
-    filePath = input()
-
+    # filePath = input()
+    filePath = './untrusted_picklefiles/skops-yu3ifopn-infected.pkl'
     detector = Detector(config_path, allowlist_file, safeclass_file)
-    detector._exists_attack_proto2(filePath)
+    f = open(filePath, 'rb')
+    print(detector.exists_attack(f))
+    f.close()
