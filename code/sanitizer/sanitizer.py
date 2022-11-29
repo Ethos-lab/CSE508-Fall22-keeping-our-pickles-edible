@@ -332,9 +332,9 @@ class Sanitizer():
 
         # step 1.2
         proto = self.detector.get_protocol(pickle_file_object)
-
+        print(proto)
         global_reuse_dict = self.detector.get_global_reuse_data(pickle_file_object, proto=proto)
-
+        print(global_reuse_dict)
         # step 1.3: detected parts with malicious code that needs to be removed.
 
         if self.detector.exists_nested_attack(pickle_file_object, global_reuse_dict, proto=proto):
@@ -343,7 +343,7 @@ class Sanitizer():
         else:
             mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object,
                                                                    global_reuse_dict, proto=proto)
-
+        print(mal_opcode_data)
         # mal_opcode_data: contains global opcode info, reduce opcode info, info about next
         # binput arg and prev binput arg.
 
@@ -351,6 +351,7 @@ class Sanitizer():
         data_bytearray = self.delete_and_rectify(dir_name, new_pickle_name, data_bytearray,
                                                  pickle_file_object, mal_opcode_data, proto=proto)
 
+        print("After step 2")
         # step 3    
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
         self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
@@ -429,10 +430,10 @@ if __name__ == "__main__":
     #     print("Sanitizing ", unsan_name)        
     #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
     
-    dir_path = 'C:\\Users\\Admin\\Downloads'
-    sanitizer.sanitize_bin(dir_path, 'detr-resnet-50-nested-infected.bin')
+    dir_path = '../untrusted_picklefiles/'
+    sanitizer.sanitize_pickle(dir_path, 'vit_mul_middle_3.pickle', 'new_pickle.pkl')
     
-    list_of_unsanitized_pickles=['yk_attacked.pickle']
+    # list_of_unsanitized_pickles=['yk_attacked.pickle']
 
     # for unsan_name in list_of_unsanitized_pickles:
     #     print("Sanitizing ", unsan_name)        
