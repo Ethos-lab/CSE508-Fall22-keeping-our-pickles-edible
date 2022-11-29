@@ -597,7 +597,7 @@ class Detector():
                     # Create a list containing first and second BINUNI calls and current STACK GLOBAL data
                     temp_list_data = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
                     bef_attack_memo_arg = self._find_previous_memoize(file_data, second_prev_binuni_data['pos'])
-                    global_nested_stack.append([temp_list_data, bef_attack_memo_arg])
+                    global_nested_stack.append([temp_list_data, bef_attack_memo_arg['arg']])
                     
                     # Reset the first prev and second prev binuni data dicts
                     second_prev_binuni_data = {}
@@ -616,7 +616,7 @@ class Detector():
                     # Create a list containing first and second BINUNI calls and current STACK GLOBAL data
                     temp_list_data = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
                     bef_attack_memo_arg = self._find_previous_memoize(file_data, second_prev_binuni_data['pos'])
-                    global_nested_stack.append([temp_list_data, bef_attack_memo_arg])
+                    global_nested_stack.append([temp_list_data, bef_attack_memo_arg['arg']])
                     
                     # Reset the first prev and second prev binuni data dicts
                     second_prev_binuni_data = {}
@@ -797,7 +797,7 @@ class Detector():
                     stack_global_data = {'info': info, 'arg': arg, 'pos': pos}
                     sub_list = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
                     bef_attack_memo_arg = self._find_previous_memoize(file_data, second_prev_binuni_data['pos'])
-                    temp_sub_list = [sub_list, bef_attack_memo_arg]
+                    temp_sub_list = [sub_list, bef_attack_memo_arg['arg']]
                     global_flag = True
                     
                     # Reset the first prev and second prev binuni data dicts
@@ -815,7 +815,7 @@ class Detector():
                     stack_global_data = {'info': global_reuse_data['info'], 'arg': global_reuse_data['arg'], 'pos': pos}
                     sub_list = [second_prev_binuni_data, first_prev_binuni_data, stack_global_data]
                     bef_attack_memo_arg = self._find_previous_memoize(file_data, second_prev_binuni_data['pos'])
-                    temp_sub_list = [sub_list, bef_attack_memo_arg]
+                    temp_sub_list = [sub_list, bef_attack_memo_arg['arg']]
                     global_flag = True
                     
                     # Reset the first prev and second prev binuni data dicts
