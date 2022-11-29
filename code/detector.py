@@ -991,7 +991,7 @@ class Detector():
 
 
 if __name__ == "__main__":
-    print('input file path')
+    print('Input file path')
     config_path = 'config_files'
     allowlist_file = 'allowlist.config'
     safeclass_file = 'safeclasses.config'

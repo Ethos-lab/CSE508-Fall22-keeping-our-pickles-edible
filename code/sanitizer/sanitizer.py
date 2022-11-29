@@ -27,7 +27,7 @@ class Sanitizer():
 
     @staticmethod
     def test_pkl(class_to_load, dir_name):
-        print("loading model from ", dir_name)
+        print("Loading model from ", dir_name)
         model = class_to_load.from_pretrained(dir_name)  # or load from HF hub
         print(model)
 
@@ -107,14 +107,14 @@ class Sanitizer():
         data_bytearray = self.pickle_ec.read_pickle_from_file_obj_to_bytearray(pickle_file_obj)
 
         memo_get_calls_data = self.detector.get_memo_get_calls(pickle_file_obj)
-        print("memo get calls data", memo_get_calls_data)
+        # print("Memo get calls data", memo_get_calls_data)
         for id, val in enumerate(memo_get_calls_data):
             memo_offset = -1
             for range_tup in memo_offset_ranges:
                 if range_tup[0] <= val['arg'] <= range_tup[1]:
                     memo_offset = range_tup[2]
             if memo_offset == -1:
-                print("The pickle file is corrupted beyond repair. Can't be sanitized.")
+                print("The pickle file is corrupted and beyond repair as the malicious code contains some code necessary for the execution of the file, which if removed would break the structure of the pickle file.")
                 sys.exit(0)
 
             offsetted_ind = val['arg'] - memo_offset
@@ -290,7 +290,7 @@ class Sanitizer():
                 prev_attack_aft_binput_arg = aft_attack_binput_arg
 
         binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
-        print(binput_arg_offset_ranges)
+        # print(binput_arg_offset_ranges)
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
         # print(new_path_to_pickle_file)
 
@@ -332,9 +332,9 @@ class Sanitizer():
 
         # step 1.2
         proto = self.detector.get_protocol(pickle_file_object)
-        print("proto", proto)
+        print("PROTO", proto)
         global_reuse_dict = self.detector.get_global_reuse_data(pickle_file_object, proto=proto)
-        print("global_reuse_data", global_reuse_dict)
+        # print("global_reuse_data", global_reuse_dict)
         # step 1.3: detected parts with malicious code that needs to be removed.
 
         if self.detector.exists_nested_attack(pickle_file_object, global_reuse_dict, proto=proto):
@@ -343,7 +343,7 @@ class Sanitizer():
         else:
             mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object,
                                                                    global_reuse_dict, proto=proto)
-        print("mal_opcode_data", mal_opcode_data)
+        # print("mal_opcode_data", mal_opcode_data)
         # mal_opcode_data: contains global opcode info, reduce opcode info, info about next
         # binput arg and prev binput arg.
 
@@ -351,11 +351,12 @@ class Sanitizer():
         data_bytearray = self.delete_and_rectify(dir_name, new_pickle_name, data_bytearray,
                                                  pickle_file_object, mal_opcode_data, proto=proto)
 
-        print("After step 2")
+        # print("After step 2")
         # step 3    
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
         self.pickle_ec.write_pickle_from_bytearray(data_bytearray, new_path_to_pickle_file)
 
+        print('Sanitization successful')
         return
 
     def sanitize_bin(self, dir_name, binname):
