@@ -94,7 +94,7 @@ class Detector():
             # print({'info':info, 'arg': arg, 'pos':pos})
 
             elif info.name == 'STACK_GLOBAL' and possible_attack_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 # Check if combined_arg is in whitelist or not to confirm about the attack
@@ -243,7 +243,7 @@ class Detector():
                     possible_global_flag = True
 
             elif info.name == 'STACK_GLOBAL' and possible_global_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 # Check if combined_arg is in whitelist or not to confirm about the attack
@@ -365,7 +365,7 @@ class Detector():
                 # print({'info':info, 'arg': arg, 'pos':pos})
 
             elif info.name == 'STACK_GLOBAL' and possible_attack_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 if combined_arg not in self._ALLOWLIST:
@@ -387,7 +387,7 @@ class Detector():
                 possible_attack_flag = False
 
             elif info.name == 'BINGET' and arg in global_reuse_dict.keys() and possible_attack_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 if combined_arg not in self._ALLOWLIST:
@@ -566,7 +566,7 @@ class Detector():
                 # print({'info':info, 'arg': arg, 'pos':pos})
 
             elif info.name == 'STACK_GLOBAL' and possible_attack_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 if combined_arg not in self._ALLOWLIST:
@@ -583,7 +583,7 @@ class Detector():
                 possible_attack_flag = False
 
             elif info.name == 'BINGET' and arg in global_reuse_dict.keys() and possible_attack_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 if combined_arg not in self._ALLOWLIST:
@@ -767,7 +767,7 @@ class Detector():
                 # print({'info':info, 'arg': arg, 'pos':pos})
 
             elif info.name == 'STACK_GLOBAL' and possible_attack_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 if combined_arg not in self._ALLOWLIST:
@@ -783,7 +783,7 @@ class Detector():
                 possible_attack_flag = False
 
             elif info.name == 'BINGET' and arg in global_reuse_dict.keys() and possible_attack_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 if combined_arg not in self._ALLOWLIST:
@@ -917,7 +917,7 @@ class Detector():
             # print({'info':info, 'arg': arg, 'pos':pos})
 
             elif info.name == 'STACK_GLOBAL' and possible_attack_flag:
-                combined_arg = second_prev_binuni_data['arg'] + first_prev_binuni_data['arg']
+                combined_arg = second_prev_binuni_data['arg'] + ' ' + first_prev_binuni_data['arg']
                 combined_arg = combined_arg.replace(' ', '.')
 
                 if combined_arg not in self._ALLOWLIST:

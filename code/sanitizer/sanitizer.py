@@ -107,7 +107,7 @@ class Sanitizer():
         data_bytearray = self.pickle_ec.read_pickle_from_file_obj_to_bytearray(pickle_file_obj)
 
         memo_get_calls_data = self.detector.get_memo_get_calls(pickle_file_obj)
-
+        print("memo get calls data", memo_get_calls_data)
         for id, val in enumerate(memo_get_calls_data):
             memo_offset = -1
             for range_tup in memo_offset_ranges:
@@ -290,7 +290,7 @@ class Sanitizer():
                 prev_attack_aft_binput_arg = aft_attack_binput_arg
 
         binput_arg_offset_ranges.append((prev_attack_aft_binput_arg, 1000000000000, sanitizer_memo_offset))
-
+        print(binput_arg_offset_ranges)
         new_path_to_pickle_file = join(dir_name, new_pickle_name)
         # print(new_path_to_pickle_file)
 
@@ -332,9 +332,9 @@ class Sanitizer():
 
         # step 1.2
         proto = self.detector.get_protocol(pickle_file_object)
-        print(proto)
+        print("proto", proto)
         global_reuse_dict = self.detector.get_global_reuse_data(pickle_file_object, proto=proto)
-        print(global_reuse_dict)
+        print("global_reuse_data", global_reuse_dict)
         # step 1.3: detected parts with malicious code that needs to be removed.
 
         if self.detector.exists_nested_attack(pickle_file_object, global_reuse_dict, proto=proto):
@@ -343,7 +343,7 @@ class Sanitizer():
         else:
             mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object,
                                                                    global_reuse_dict, proto=proto)
-        print(mal_opcode_data)
+        print("mal_opcode_data", mal_opcode_data)
         # mal_opcode_data: contains global opcode info, reduce opcode info, info about next
         # binput arg and prev binput arg.
 
@@ -431,7 +431,7 @@ if __name__ == "__main__":
     #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
     
     dir_path = '../untrusted_picklefiles/'
-    sanitizer.sanitize_pickle(dir_path, 'vit_mul_middle_3.pickle', 'new_pickle.pkl')
+    sanitizer.sanitize_pickle(dir_path, 'skops-yu3ifopn-infected.pkl', 'new_pickle.pkl')
     
     # list_of_unsanitized_pickles=['yk_attacked.pickle']
 
