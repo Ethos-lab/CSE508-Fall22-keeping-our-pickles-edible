@@ -107,7 +107,7 @@ class Sanitizer():
         data_bytearray = self.pickle_ec.read_pickle_from_file_obj_to_bytearray(pickle_file_obj)
 
         memo_get_calls_data = self.detector.get_memo_get_calls(pickle_file_obj)
-        print("Memo get calls data", memo_get_calls_data)
+        # print("Memo get calls data", memo_get_calls_data)
         for id, val in enumerate(memo_get_calls_data):
             memo_offset = -1
             for range_tup in memo_offset_ranges:
@@ -332,9 +332,9 @@ class Sanitizer():
 
         # step 1.2
         proto = self.detector.get_protocol(pickle_file_object)
-        print("PROTO", proto)
+        # print("PROTO", proto)
         global_reuse_dict = self.detector.get_global_reuse_data(pickle_file_object, proto=proto)
-        print("global_reuse_data", global_reuse_dict)
+        # print("global_reuse_data", global_reuse_dict)
         # step 1.3: detected parts with malicious code that needs to be removed.
 
         if self.detector.exists_nested_attack(pickle_file_object, global_reuse_dict, proto=proto):
@@ -343,7 +343,7 @@ class Sanitizer():
         else:
             mal_opcode_data = self.detector.get_global_reduce_data(data_bytearray, pickle_file_object,
                                                                    global_reuse_dict, proto=proto)
-        print("mal_opcode_data", mal_opcode_data)
+        # print("mal_opcode_data", mal_opcode_data)
         # mal_opcode_data: contains global opcode info, reduce opcode info, info about next
         # binput arg and prev binput arg.
 
