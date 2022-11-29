@@ -28,7 +28,8 @@ class Detector():
             file_data: file object to perform detection on.
 
         Returns:
-            Bool: If true, will return the specific argument that is called.
+            dict with 'result' key indicating if an attack was found,
+             and 'cause' key indicating the global call in question
 
         Just prints if the file seems to be safe or unsafe.
         """
@@ -36,7 +37,15 @@ class Detector():
         if proto < 4:
             return self._exists_attack_proto2(file_data)
         else:
-            return self._exists_attack_proto4(file_data)
+            proto4_dict = self._exists_attack_proto4(file_data)
+            proto2_dict = self._exists_attack_proto2(file_data)
+            if proto4_dict['result']:
+                return proto4_dict
+            elif proto2_dict['result']:
+                return proto2_dict
+            else:
+                return proto4_dict
+
 
     def _exists_attack_proto2(self, file_data):
         """
@@ -55,11 +64,11 @@ class Detector():
                 arg = arg.replace(' ', '.')
                 if arg not in self._ALLOWLIST:
                     file_data.seek(current_pointer)
-                    return True, arg
+                    return {'result':True, 'cause':arg}
 
         else:
             file_data.seek(current_pointer)
-            return False
+            return {'result':False, 'cause':None}
 
     def _exists_attack_proto4(self, file_data, previous_pos=-1):
         """
@@ -100,12 +109,12 @@ class Detector():
                 # Check if combined_arg is in whitelist or not to confirm about the attack
                 if combined_arg not in self._ALLOWLIST:
                     file_data.seek(current_pointer)
-                    return True, combined_arg
+                    return {'result': True, 'cause':combined_arg}
                 else:
                     possible_attack_flag = False
 
         file_data.seek(current_pointer)
-        return False
+        return {'result':False, 'cause':None}
 
     def detect_pickle_safe_class(self, className) -> bool:
         """
