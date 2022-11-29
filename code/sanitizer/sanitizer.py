@@ -431,7 +431,7 @@ if __name__ == "__main__":
     #     sanitizer.sanitize_pickle('../untrusted_picklefiles', unsan_name, "edited_"+unsan_name)
     
     dir_path = '../untrusted_picklefiles/'
-    sanitizer.sanitize_pickle(dir_path, 'vit_mul_middle_3.pickle', 'new_pickle.pkl')
+    sanitizer.sanitize_pickle(dir_path, 'skops-yu3ifopn-infected.pkl', 'new_pickle.pkl')
     
     # list_of_unsanitized_pickles=['yk_attacked.pickle']
 

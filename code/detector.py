@@ -140,7 +140,7 @@ class Detector():
         file_data.seek(0)
 
         memoize_counter = 0
-        memoize_data_dict = {'info': None, 'pos': 1000000000000, 'arg': 1000000000000}
+        memoize_data_dict = {'info': None, 'pos': 0, 'arg': 0}
         
         for info, arg, pos in genops(file_data):
 
