@@ -1006,7 +1006,7 @@ if __name__ == "__main__":
     safeclass_file = 'safeclasses.config'
 
     # filePath = input()
-    filePath = './untrusted_picklefiles/skops-yu3ifopn-infected.pkl'
+    filePath = '/home/starc/Downloads/infected-memo.pkl'
     detector = Detector(config_path, allowlist_file, safeclass_file)
     f = open(filePath, 'rb')
     print(detector.exists_attack(f))
