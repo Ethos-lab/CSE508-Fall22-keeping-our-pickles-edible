@@ -1,13 +1,4 @@
-from distutils.command.config import config
-import pickle
-from pickletools import genops, opcodes, OpcodeInfo
-import builtins
-import collections
-import inspect
-import io
-import logging
-import pickle
-import torch
+from pickletools import genops
 import os
 
 
@@ -22,10 +13,10 @@ class Detector():
         self._ALLOWLIST = allowlist_file_data.split('\n')
         self._SAFECLASS = safeclass_file_data.split('\n')
 
-    def exists_attack(self, file_data):
+    def exists_attack(self, file_name):
         """
         Params:
-            file_data: file object to perform detection on.
+            file_name: file name to perform detection on.
 
         Returns:
             dict with 'result' key indicating if an attack was found,
@@ -33,15 +24,18 @@ class Detector():
 
         Just prints if the file seems to be safe or unsafe.
         """
+        file_data = open(file_name, 'rb')
         proto = self.get_protocol(file_data)
         if proto < 4:
-            return self._exists_attack_proto2(file_data)
+            proto2_dict = self._exists_attack_proto2(file_data)
+            file_data.close()
+            return proto2_dict
         else:
             proto4_dict = self._exists_attack_proto4(file_data)
             proto2_dict = self._exists_attack_proto2(file_data)
-
+            file_data.close()
             if proto4_dict['result'] and proto2_dict['result']:
-                return {'result': True, 'cause': proto4_dict['cause']+proto2_dict['cause']}
+                return {'result': True, 'cause': proto4_dict['cause'] + proto2_dict['cause']}
             elif proto4_dict['result']:
                 return proto4_dict
             elif proto2_dict['result']:
@@ -68,7 +62,7 @@ class Detector():
             if info.name == 'GLOBAL':
                 arg = arg.replace(' ', '.')
                 if arg not in self._ALLOWLIST:
-                    all_attacks.append([{'arg': arg, 'pos': pos}])
+                    all_attacks.append({'proto': 2, 'arg': arg, 'pos': pos})
 
         if len(all_attacks) == 0:
             file_data.seek(current_pointer)
@@ -93,7 +87,7 @@ class Detector():
         second_prev_binuni_data = {}
         first_prev_binuni_data = {}
 
-        all_attacks=[]
+        all_attacks = []
 
         current_pointer = file_data.tell()
         file_data.seek(0)
@@ -119,10 +113,10 @@ class Detector():
 
                 # Check if combined_arg is in whitelist or not to confirm about the attack
                 if combined_arg not in self._ALLOWLIST:
-                    all_attacks.append({'arg':combined_arg, 'pos':pos})
+                    all_attacks.append({'proto': 2, 'arg': combined_arg, 'pos': pos})
                 else:
                     possible_attack_flag = False
-        if len(all_attacks)==0:
+        if len(all_attacks) == 0:
             file_data.seek(current_pointer)
             return {'result': False, 'cause': None}
         else:
@@ -238,7 +232,8 @@ class Detector():
         file_data.seek(0)
 
         global_reuse_dict = dict()
-        # To store the memo index and the global data at that particular index, in order to check for global reuse attack
+        # To store the memo index and the global data at that particular index,
+        # in order to check for global reuse attack
 
         for info, arg, pos in genops(file_data):
 
@@ -354,11 +349,12 @@ class Detector():
                 global_nested_stack.append(info.arg)
 
             elif len(global_nested_stack) == 0 and info.name == 'BINGET' and arg in global_reuse_dict.keys():
-                # The way we check for global calls, simply also check for BINGET references which might reuse the previous
-                # global calls
+                # The way we check for global calls, simply also check for BINGET references
+                # which might reuse the previous global calls
                 global_nested_stack.append(global_reuse_dict[arg]["arg"])
 
-            # If REDUCE is encountered before the next GLOBAL then that attack does not have attacks nested in it, so continue checking
+            # If REDUCE is encountered before the next GLOBAL then that attack does not have attacks nested in it,
+            # so continue checking
             elif len(global_nested_stack) >= 1 and info.name == 'REDUCE':
                 global_nested_stack.pop()
 
@@ -516,7 +512,8 @@ class Detector():
             if info.name == 'BINPUT' or info.name == 'LONG_BINPUT':
                 bef_attack_binput_arg = arg
 
-                # If we have a complete attack(indicated by attack_end_flag) then check to store the first BINPUT after the attack
+                # If we have a complete attack(indicated by attack_end_flag) then check to store the first BINPUT
+                # after the attack
                 if attack_end_flag:
                     # First binput after the attack is found
                     # Use data_bytearray to detect pop and binput
@@ -551,7 +548,8 @@ class Detector():
                 global_nested_stack.append([global_data, bef_attack_binput_arg])
 
             elif info.name == 'BINGET' and arg in global_reuse_dict.keys():
-                # The way we check for global calls, simply also check for BINGET references which might reuse the previous
+                # The way we check for global calls, simply also check for BINGET references which might
+                # reuse the previous
                 # global calls
                 # Arg in keys indicates that BINGET is refering to a GLOBAL attack call, i.e global reuse attack
                 reused_global_data = global_reuse_dict[arg]
@@ -562,7 +560,8 @@ class Detector():
                 reduce_data = {"info": info, "arg": arg, "pos": pos}
                 attack_end_flag = True
                 temp_list_data = global_nested_stack.pop()
-                # Attack is complete so remove from global stack and append to nested_attack_stack to wait for BINPUT after the attack
+                # Attack is complete so remove from global stack and append to nested_attack_stack to wait
+                # for BINPUT after the attack
                 nested_attack_stack.append([temp_list_data[0], reduce_data, temp_list_data[1]])
 
         file_data.seek(current_pointer)
@@ -657,11 +656,13 @@ class Detector():
                 attack_end_flag = True
                 temp_list_data = global_nested_stack.pop()
 
-                # Attack is complete so remove from global stack and append to nested_attack_stack to wait for BINPUT after the attack
+                # Attack is complete so remove from global stack and append to nested_attack_stack to wait
+                # for BINPUT after the attack
                 nested_attack_stack.append([temp_list_data[0], reduce_data, temp_list_data[1]])
 
             elif info.name == 'MEMOIZE' and attack_end_flag:
-                # If we have a complete attack(indicated by attack_end_flag) then check to store the first MEMOIZE after the attack
+                # If we have a complete attack(indicated by attack_end_flag) then check to store the
+                # first MEMOIZE after the attack
                 # First memoize after the attack is found
 
                 # Use data_bytearray to detect pop and memoize
@@ -733,7 +734,8 @@ class Detector():
                 global_data = {"info": info, "arg": arg, "pos": pos}
 
             elif info.name == 'BINGET' and arg in global_reuse_dict.keys():
-                # The way we check for global calls, simply also check for BINGET references which might reuse the previous
+                # The way we check for global calls, simply also check for BINGET references
+                # which might reuse the previous
                 # global calls
                 # Arg in keys indicates that BINGET is refering to a GLOBAL attack call, i.e global reuse attack
                 reused_global_data = global_reuse_dict[arg]
@@ -858,7 +860,8 @@ class Detector():
                 reduce_flag = True
 
             elif info.name == 'MEMOIZE' and reduce_flag:
-                # If we have a complete attack(indicated by reduce_flag) then check to store the first MEMOIZE after the attack
+                # If we have a complete attack(indicated by reduce_flag) then check to store
+                # the first MEMOIZE after the attack
                 # First memoize after the attack is found
 
                 # Use data_bytearray to detect pop and memoize
@@ -990,12 +993,14 @@ class Detector():
                 reduce_data = {"info": info, "arg": arg, "pos": pos}
                 attack_end_flag = True
                 temp_list_data = global_nested_stack.pop()
-                # Attack is complete so remove from global stack and append to nested_attack_stack to wait for BINPUT after the attack
+                # Attack is complete so remove from global stack and append to nested_attack_stack to
+                # wait for BINPUT after the attack
                 nested_attack_stack.append([temp_list_data[0], reduce_data, temp_list_data[1]])
 
             elif info.name == 'MEMOIZE':
                 bef_attack_memo_arg = self._find_next_memoize(file_data, pos - 1)['arg']
-                # If we have a complete attack(indicated by attack_end_flag) then check to store the first MEMOIZE after the attack
+                # If we have a complete attack(indicated by attack_end_flag) then check to store the
+                # first MEMOIZE after the attack
                 if attack_end_flag:
                     # First memoize after the attack is found
 
@@ -1029,6 +1034,4 @@ if __name__ == "__main__":
     # filePath = input()
     filePath = '/home/starc/Downloads/infected-memo.pkl'
     detector = Detector(config_path, allowlist_file, safeclass_file)
-    f = open(filePath, 'rb')
-    print(detector.exists_attack(f))
-    f.close()
+    print(detector.exists_attack(filePath))

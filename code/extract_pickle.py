@@ -101,8 +101,9 @@ class PickleEC():
 
     @staticmethod
     def _compress_zip(working_dir, bin_name, source_dir):
-        print('cd ' + working_dir + '; zip -r ' + bin_name + ' ' + source_dir + '/')
         subprocess.run('cd ' + working_dir + '; zip -r ' + bin_name + ' ' + source_dir + '/', shell=True,
+                       capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run('cd ' + working_dir + '; rm -rf ' + source_dir + '/', shell=True,
                        capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
 
@@ -123,6 +124,8 @@ class PickleEC():
                     f.close()
                 new_b.write(temp_data)
             new_b.close()
+        subprocess.run('cd ' + working_dir + '; rm -rf ' + source_dir + '/', shell=True,
+                       capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
 
     def compress(self, working_dir, bin_name):

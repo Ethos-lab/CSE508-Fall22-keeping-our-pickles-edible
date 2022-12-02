@@ -1,10 +1,3 @@
-import pickletools
-import io
-import transformers
-from transformers import AutoModel
-from transformers import RobertaTokenizer, RobertaModel
-from pickletools import opcodes as opcode_lib
-import zipfile
 import os
 from os.path import join
 import pdb
@@ -359,46 +352,7 @@ class Sanitizer():
         print('Sanitization successful')
         return
 
-    def sanitize_bin(self, dir_name, binname):
-        """
-        Params:
-            dir_name: the name of the directory where the pickle file is present. 
-            pickle_name: the name of the pickle file
-            new_pickle_name: the name of the new pickle file that needs to be created.
-        
-        Returns: 
-            None
-        
-        General steps in sanitisation:
-            1. extract pickle file form .bin file
-            2. call sanitize_pickle
-            3. compress the new folder to form new .bin file
 
-        """
-
-        # step 1
-        self.pickle_ec.extract(dir_name, binname)
-
-        # step 2
-        if os.path.isdir(join(dir_name, 'archive')):
-            unzipped_dir = 'archive'
-            path_to_pickle_dir = join(dir_name, unzipped_dir)
-            self.sanitize_pickle(path_to_pickle_dir, 'data.pkl', 'data.pkl')
-        elif os.path.isdir(join(dir_name, 'pickle_files')):
-            unpickled_dir = 'pickle_files'
-            path_to_pickle_dir = join(dir_name, unpickled_dir)
-            for i in os.listdir(path_to_pickle_dir):
-                try:
-                    self.sanitize_pickle(path_to_pickle_dir, i, i)
-                except Exception as e:
-                    print("Can't sanitize "+i+" due to some error", e)
-        else:
-            # for tar types
-            pass
-
-        # step 3 
-        self.pickle_ec.compress(dir_name, binname)
-        return
 
 
 if __name__ == "__main__":
