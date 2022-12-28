@@ -6,16 +6,16 @@ A allowlist-based detection+sanitation library for pytorch models saved using st
 * A module to inject attacks into a given pytorch binary file saved using state_dict. 
 
 ## Usage (Sanitation)
-Run ```python pipeline.py``` and input the directory in which the binary file exists and the binary file name.
+Run ```python code/pipeline.py``` and input the directory in which the binary file exists and the binary file name.
 Make sure that the allowlist config file paths are correct. 
 
-```pipeline.py``` does the detection of imports outside the allowlist and asks if a sanitation is required. 
+```code/pipeline.py``` does the detection of imports outside the allowlist and asks if a sanitation is required. 
 The sanitation will be done in an inplace fashion. 
 The sanitation outputs a binary file that can be directly used.
 
 
 ## Usage (Attack Injection)
-Multiple attack injection samples have been provided with clear usage instructions within the code. Each sample is labled ```attack_sample_<suffix>.py```, with each acheiving a different kind of attack. All but any with suffix "pickle" takes a Hugging Face model binary as input (pickle file otherwise).
+Multiple attack injection samples have been provided with clear usage instructions within the code. Each sample is labled ```code/attacks/attack_sample_<suffix>.py```, with each acheiving a different kind of attack. All but any with suffix "pickle" takes a Hugging Face model binary as input (pickle file otherwise).
 
 
   - attack_sample.py: Sequential execution attack that inserts a single webpage
@@ -29,5 +29,5 @@ Multiple attack injection samples have been provided with clear usage instructio
 All of these files can be executed as follows
 
 ```
-python attack_sample_<suffix>.py
+python attacks/attack_sample_<suffix>.py
 ```
