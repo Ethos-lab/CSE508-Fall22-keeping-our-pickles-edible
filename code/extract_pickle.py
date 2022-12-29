@@ -6,7 +6,6 @@ from os.path import join
 import subprocess
 import tarfile
 from tqdm import tqdm
-from exceptions import *
 
 class PickleEC():
     def __init__(self):
@@ -91,12 +90,16 @@ class PickleEC():
     def extract(self, dir_name, bin_name):
         path_to_bin = os.path.join(dir_name, bin_name)
         file_obj = self.read_pickle(path_to_bin)
+        print("extracting")
         if self._is_zipfile(file_obj):
             self._extract_zip(dir_name, bin_name)
+            return "zip"
         elif self._is_tarfile(file_obj):
             self._extract_tar(dir_name, bin_name)
+            return "tar"
         else:
             self._extract_pickle(dir_name, bin_name)
+            return "pkl"
         return
 
     @staticmethod
@@ -128,7 +131,10 @@ class PickleEC():
                        capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return
 
-    def compress(self, working_dir, bin_name):
+    def compress(self,
+                 working_dir,  # the parent directory
+                 bin_name  # the name of the output bin file.
+                 ):
 
         if os.path.isdir(os.path.join(working_dir, 'archive')):
             self._compress_zip(working_dir, bin_name, 'archive')
