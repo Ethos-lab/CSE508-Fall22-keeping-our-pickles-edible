@@ -20,28 +20,26 @@ The allowlist is specified in ```config_files/allowlist.config```. Note that thi
 
 For more details, please read the following project report: [Keeping Our Pickles Edible](https://drive.google.com/file/d/1TP7_19WM1JuN0CLnzLN0C_GV9kn8Q25R/view?usp=sharing)
 
-## Usage
-Requirements:
-python>=3.4
-tqdm
+## Requirements:
+* python>=3.4
+* tqdm
 
 To run tests:
-torch
-transformers
+* torch
+* transformers
 
 
-### Usage (Sanitation)
+## Usage (Sanitation)
 Run ```python code/pipeline.py``` and input the directory in which the binary file exists and the binary file name.
-Make sure that the allowlist config file paths are correct. 
+Make sure that the allowlist config file paths inside ```pipeline.py``` are correct. 
 
 ```code/pipeline.py``` does the detection of imports outside the allowlist and asks if a sanitation is required. 
 The sanitation will be done in an inplace fashion. 
 The sanitation outputs a binary file that can be directly used.
 
 
-### Usage (Attack Injection)
-Multiple attack injection samples have been provided with clear usage instructions within the code. Each sample is labled ```code/attacks/attack_sample_<suffix>.py```, with each acheiving a different kind of attack. All but any with suffix "pickle" takes a Hugging Face model binary as input (pickle file otherwise).
-
+## Usage (Attack Injection)
+Multiple attack injection samples have been provided with clear usage instructions within the code. Each sample is labeled ```code/attacks/attack_sample_<suffix>.py```, with each acheiving a different kind of attack. All but any with suffix "pickle" takes a Hugging Face model binary as input (pickle file otherwise).
 
   - attack_sample.py: Sequential execution attack that inserts a single webpage
   - attack_sample_email.py: Sequential execution attack that copies the contents of a google drive and emails them to a third party
@@ -56,3 +54,8 @@ All of these files can be executed as follows
 ```
 python attacks/attack_sample_<suffix>.py
 ```
+
+Please edit the variables ```in_bin_dir``` and ```out_bin_dir``` in these files for the input binary file path and output binary file path respectively. 
+
+## Credits
+This project is a joint effort by [Alfredo Rivero](https://github.com/alrivero), [Shreejay Jahagirdar](https://github.com/shreejay23), Sanskar Sehgal and [Sai Tanmay Reddy](https://github.com/starc52).
