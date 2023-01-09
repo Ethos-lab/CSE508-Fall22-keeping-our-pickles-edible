@@ -1,4 +1,7 @@
 # Keeping Our Pickles Edible
+
+**Class Project for CSE508: Network Security - Fall 2022**
+
 A allowlist-based detection+sanitation library for pytorch models saved using state_dict. This library has the following features:
 * An allowlist-based detector that can detect all attacks outside the allowlist for pytorch models that are saved using a state_dict for pickle protocol 2 and below. 
   * The same allowlist-based detector can also detect most attacks outside the allowlist in pickle protocol 5 or below, barring the attacks in which the stack_global call is not obfuscated. 
