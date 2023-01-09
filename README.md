@@ -54,4 +54,4 @@ python attacks/attack_sample_<suffix>.py
 Please edit the variables ```in_bin_dir``` and ```out_bin_dir``` in these files for the input binary file path and output binary file path respectively. 
 
 ## Credits
-This project is a joint effort by [Alfredo Rivero](https://github.com/alrivero), [Shreejay Jahagirdar](https://github.com/shreejay23), Sanskar Sehgal and [Sai Tanmay Reddy](https://github.com/starc52).
+This project is a joint effort by [Alfredo Rivero](https://github.com/alrivero), [Shreejay Jahagirdar](https://github.com/shreejay23), Sanskar Sehgal and [Sai Tanmay Reddy](https://github.com/starc52). This project was conducted as part of CSE508: Network Security course at Stony Brook University in Fall of 2022 and was made public as part of students' request.
